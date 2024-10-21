@@ -15,6 +15,8 @@ import os
 root = r"C:\opt\openEMS"
 os.add_dll_directory(root)
 
+base_path=os.path.abspath(f'runs')
+
 from datetime import datetime as dt
 from random import randint
 import numpy as np
@@ -45,7 +47,6 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
     Returns:
     - None: The function modifies the 'meshlines' dictionary in place.
     """
-    print(f"Start: {startpoint} Center: {center} Stop: {stoppoint}")
     
     if startpoint != stoppoint:
         # Normalize the direction vector
@@ -53,7 +54,6 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
 
         # Add the first point offset by the direction
         meshlines[axis].append(startpoint + direction * min_size * 2 / 3)
-        print(f"DIRECTION: {direction}")
         # Initialize the current point and size
         current_point = startpoint - direction * min_size * 1 / 3
         currentsize = min_size
@@ -79,7 +79,6 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
             meshlines[axis].insert(mid_index, center)
         elif abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > length/2:
             meshlines[axis].insert(mid_index, center)
-        print(f"meshlines: {meshlines[axis]} axis: {axis}")
 
 def extend_line(start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
     # Calculate the total range for each dimension
@@ -157,13 +156,13 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     timestamp =  f"_{randint(0, 9999):04}_{dt.now().strftime('%Y%m%d_%H%M%S')}"
 
     # Add the timestamp to the file name
-    Sim_Path = os.path.abspath(f'runs\\tmp_IFA_{timestamp}')
+    Sim_Path = os.path.join(base_path,f'tmp_IFA_{timestamp}')
 
     # Simulation box size
     SimBox = np.array([substrate_width * 2, substrate_length * 2, 150])
 
     # Initialize openEMS
-    FDTD = openEMS(NrTS=600000)#, EndCriteria=1e-5)
+    FDTD = openEMS(NrTS=150000)#, EndCriteria=1e-5)
     FDTD.SetGaussExcite(f0, fc)
     FDTD.SetBoundaryCond(['MUR', 'MUR', 'MUR', 'MUR', 'MUR', 'MUR'])
 
@@ -242,10 +241,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     #Finalize the mesh
     # Generate a smooth mesh with max. cell size: lambda_min / 20
-    #print variable C0  f0  fc  unit  20
-    print(f"C0: {C0} f0: {f0} fc: {fc} unit: {unit}")
     mesh_res = C0 / (f0 + fc) / unit / 20
-    print(mesh_res)
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
 
     # Add the nf2ff recording box
@@ -254,7 +250,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     if os.path.exists(Sim_Path):
         import shutil
         shutil.rmtree(Sim_Path)
-
+    print(f"Creating directory {Sim_Path}")
     os.mkdir(Sim_Path)
     CSX_file = os.path.join(Sim_Path, Sim_CSX)
     CSX.Write2XML(CSX_file)
@@ -268,7 +264,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     if not post_proc_only:
         try:
             #FDTD.Run(Sim_Path, verbose=3, cleanup=True)
-            FDTD.Run(Sim_Path, verbose=3, cleanup=True, debug=True)
+            FDTD.Run(Sim_Path, verbose=0, cleanup=True)
         except Exception as e:
             print("An error occurred during simulation:", e)
             import traceback
@@ -303,9 +299,11 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                                                                     10 * np.log10(nf2ff_res_theta90.Dmax[0])))
             print('Efficiency:   nu_rad = {:.1f} %'.format(100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])))
 
-        print(f"Resonance frequency: {f_res/1e9} GHz")
-        #s11 at closste to center frequency
-        print(f"S11 at center frequency: {s11_dB[f_res_ind]} dB")
+            print(f"Resonance frequency: {f_res/1e9} GHz")
+            #s11 at closste to center frequency
+            print(f"S11 at resonance frequency: {s11_dB[f_res_ind]} dB")
+        
+        print(f"S11 at center frequency{ s11_dB[freq == center_freq]} dB")
         
         if plot:
             # Create a figure with subplots, 2 rows and 2 columns
@@ -350,7 +348,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             else:
                 # Find resonance frequency from s11
                 print("Calculate NF2FF")
-                nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, verbose=1, outfile='3D_Pattern.h5')
+                nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, verbose=0, outfile='3D_Pattern.h5')
 
                 # Create the bottom-left polar subplot (axs[1, 0]) for the xz-plane
                 ax_polar1 = plt.subplot(223, polar=True)
@@ -398,7 +396,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             plt.figure()
             plt.show()
 
-    return freq, s11_dB, f_res, Zin, P_in
+    return freq, s11_dB, Zin, P_in
+        
 #init main function
 if __name__ == "__main__":
     Sim_CSX = 'IFA.xml'

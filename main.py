@@ -1,9 +1,10 @@
 from ifa_test import ifa_simulation
 import random
 from deap import base, creator, tools, algorithms
+from multiprocessing import Pool
 
 def evaluation_fun(individual):
-    ifa_h, ifa_l, ifa_fp = individual
+    ifa_h, ifa_l, ifa_fp, ifa_w= individual
 
     Sim_CSX = 'IFA.xml'
     showCad = False
@@ -16,9 +17,9 @@ def evaluation_fun(individual):
     substrate_cells = 4
     #ifa_h = 5.586
     #ifa_l = 18.0
-    ifa_w1 = 0.6
-    ifa_w2 = 0.6
-    ifa_wf = 0.6
+    ifa_w1 = ifa_w
+    ifa_w2 = ifa_w
+    ifa_wf = ifa_w
     #ifa_fp = 1.108
     ifa_e = 0.5
     substrate_epsR = 4.5
@@ -26,10 +27,10 @@ def evaluation_fun(individual):
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
-    min_size = 0.2,  # minimum automesh size
+    min_size = 0.2  # minimum automesh size
     plot = False
 
-    freq, s11_dB, f_res, Zin, P_in = ifa_simulation(Sim_CSX=Sim_CSX,
+    freq, s11_dB, Zin, P_in = ifa_simulation(Sim_CSX=Sim_CSX,
                                                    showCad=showCad,
                                                    post_proc_only=post_proc_only,
                                                    unit=post_proc_only,
@@ -52,36 +53,51 @@ def evaluation_fun(individual):
                                                    max_freq=max_freq,
                                                    plot=plot,
                                                    min_size=min_size)
+    
+    return (s11_dB[freq == center_freq],)
 
 
 
 if __name__ == "__main__":
-
-    # Genetic Algorithm setup
+    # Setup DEAP
     creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMin)
 
     toolbox = base.Toolbox()
-    toolbox.register("ifa_h", random.uniform, 10, 50)
-    toolbox.register("ifa_l", random.uniform, 2, 10)
+    # Attribute generator
+    toolbox.register("ifa_h", random.uniform, 1, 14)
+    toolbox.register("ifa_l", random.uniform, 10, 19.5)
     toolbox.register("ifa_fp", random.uniform, 1, 10)
+    toolbox.register("ifa_w", random.uniform, 0.4, 1)
+    # Structure initializers
     toolbox.register("individual", tools.initCycle, creator.Individual,
-                     (toolbox.attr_length, toolbox.attr_width, toolbox.attr_feed), n=1)
+                     (toolbox.ifa_h, toolbox.ifa_l, toolbox.ifa_fp,toolbox.ifa_w), n=1)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
     toolbox.register("evaluate", evaluation_fun)
     toolbox.register("mate", tools.cxBlend, alpha=0.5)
     toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=3, indpb=0.2)
     toolbox.register("select", tools.selTournament, tournsize=3)
 
+    # Parallel processing setup
+    pool = Pool()
+    toolbox.register("map", pool.map)
+
     # Genetic Algorithm execution
-    population = toolbox.population(n=30)
-    NGEN = 40
+    population = toolbox.population(n=3)  # Adjust population size as needed
+    NGEN = 50  # Number of generations
     for gen in range(NGEN):
         offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.2)
-        fits = map(toolbox.evaluate, offspring)
-        for fit, ind in zip(fits, offspring):
+        # Evaluate the individuals with an invalid fitness
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
-        population = toolbox.select(offspring, k=len(population))
-    best_ind = tools.selBest(population, 1)[0]
 
+        # Apply the selection process to generate the next generation
+        population[:] = toolbox.select(offspring, len(population))
+
+    best_ind = tools.selBest(population, 1)[0]
     print("Best individual is %s with fitness %s" % (best_ind, best_ind.fitness.values))
+    
+    # Close the pool to release resources
+    pool.close()
