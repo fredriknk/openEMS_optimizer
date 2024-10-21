@@ -166,7 +166,7 @@ center_freq = 2.45e9
 max_freq = 2.5e9
 
 # Simulation box size
-SimBox = np.array([substrate_width * 3, substrate_length * 2, 150])
+SimBox = np.array([substrate_width * 2, substrate_length * 2, 150])
 
 # FDTD parameters
 f0 = 2.45e9  # center frequency
