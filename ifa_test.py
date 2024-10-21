@@ -286,6 +286,27 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         thetaRange = np.arange(0, 182, 2)
         phiRange = np.arange(0, 362, 2) - 180
         idx = np.where((s11_dB < -10) & (s11_dB == np.min(s11_dB)))[0]
+        
+        if len(idx) != 1:
+            print('No resonance frequency found for far-field calculation')
+        else:
+            f_res_ind = np.argmin(np.abs(s11))
+            f_res = freq[f_res_ind]
+
+            theta = np.arange(-180.0, 180.0, 2.0)
+            # Create the bottom-right polar subplot (axs[1, 1]) for the xy-plane
+            phi = theta
+            nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([0, 0, 0]) * unit, read_cached=True, outfile='nf2ff_xy.h5')
+            
+            print('Radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
+            print('Directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0],
+                                                                    10 * np.log10(nf2ff_res_theta90.Dmax[0])))
+            print('Efficiency:   nu_rad = {:.1f} %'.format(100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])))
+
+        print(f"Resonance frequency: {f_res/1e9} GHz")
+        #s11 at closste to center frequency
+        print(f"S11 at center frequency: {s11_dB[f_res_ind]} dB")
+        
         if plot:
             # Create a figure with subplots, 2 rows and 2 columns
             fig, axs = plt.subplots(2, 2, figsize=(12, 10))
@@ -328,10 +349,6 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                 print('No resonance frequency found for far-field calculation')
             else:
                 # Find resonance frequency from s11
-                f_res_ind = np.argmin(np.abs(s11))
-                f_res = freq[f_res_ind]
-
-                theta = np.arange(-180.0, 180.0, 2.0)
                 print("Calculate NF2FF")
                 nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, verbose=1, outfile='3D_Pattern.h5')
 
@@ -345,10 +362,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                 ax_polar1.set_theta_direction(-1)
                 ax_polar1.legend(loc=3)
 
-                # Create the bottom-right polar subplot (axs[1, 1]) for the xy-plane
-                phi = theta
-                nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([0, 0, 0]) * unit, read_cached=True, outfile='nf2ff_xy.h5')
-
+                
                 ax_polar2 = plt.subplot(224, polar=True)
                 E_norm = 20.0 * np.log10(nf2ff_res_theta90.E_norm / np.max(nf2ff_res_theta90.E_norm)) + nf2ff_res_theta90.Dmax
                 ax_polar2.plot(np.deg2rad(phi), 10 ** (np.squeeze(E_norm) / 20), linewidth=2, label='xy-plane')
@@ -384,14 +398,6 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             plt.figure()
             plt.show()
 
-        print('Radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
-        print('Directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0],
-                                                                  10 * np.log10(nf2ff_res_theta90.Dmax[0])))
-        print('Efficiency:   nu_rad = {:.1f} %'.format(100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])))
-        print(f"Resonance frequency: {f_res/1e9} GHz")
-        #s11 at closste to center frequency
-        print(f"S11 at center frequency: {s11_dB[f_res_ind]} dB")
-
     return freq, s11_dB, f_res, Zin, P_in
 #init main function
 if __name__ == "__main__":
@@ -417,7 +423,7 @@ if __name__ == "__main__":
     center_freq = 2.45e9
     max_freq = 2.5e9
     min_size = 0.2 # minimum automesh size
-    plot = False
+    plot = True
 
     freq, s11_dB, f_res, Zin, P_in = ifa_simulation(Sim_CSX=Sim_CSX,
                                                     showCad=showCad,
