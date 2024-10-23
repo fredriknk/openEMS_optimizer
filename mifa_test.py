@@ -272,7 +272,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         meanders = ldiff//max_edgelength
         ldfiff_ratio = ldiff / max_edgelength
 
-        if meanders > 1:
+        if meanders >= 1:
             tiplength = 1*max_edgelength
             meanders -= 1
             ldfiff_ratio -= 1
@@ -285,10 +285,11 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         stop = start + np.array([-ifa_w2, -tiplength-ifa_w2, 0])
         ifa.AddBox(start=start, stop=stop, priority=10)
 
-        if meanders > 0:
-            m_stop = start
-            for i in range(int(meanders/2+1)):
-                print(f"meander{i}")
+        if ldfiff_ratio > 0:
+            m_start = start
+            m_stop = m_start + np.array([-mifa_meander-ifa_w2,-ifa_w2,0])
+            ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+
 
         #start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
         #stop = start + np.array([substrate_width-mifa_meander-ifa_e, -ifa_w2, 0])
@@ -509,7 +510,7 @@ def testrun():
     gndplane_position = 0
     substrate_cells = 4
     ifa_h = 6.
-    ifa_l = 25
+    ifa_l = 27
     ifa_w1 = 1.
     ifa_w2 = 1.
     ifa_wf = 1.
