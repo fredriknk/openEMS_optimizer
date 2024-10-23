@@ -1,10 +1,10 @@
 from ifa_test import ifa_simulation
-import random
-from deap import base, creator, tools, algorithms
-from multiprocessing import Pool
-
+import logging
 import numpy as np
+import pyswarms as ps
+from pyswarms.utils.functions import single_obj as fx
 
+# Function to evaluate the swarm
 def evaluation_fun(swarm):
     # Extract parameter arrays from swarm
     ifa_h = swarm[:, 0]
@@ -37,58 +37,54 @@ def evaluation_fun(swarm):
     # Loop over each particle in the swarm
     for i in range(swarm.shape[0]):
         # Call the simulation for each particle
-        
-        freq, s11_dB, Zin, P_in = ifa_simulation(
-            Sim_CSX=Sim_CSX,
-            showCad=showCad,
-            post_proc_only=post_proc_only,
-            unit=unit,
-            substrate_width=substrate_width,
-            substrate_length=substrate_length,
-            substrate_thickness=substrate_thickness,
-            gndplane_position=gndplane_position,
-            substrate_cells=substrate_cells,
-            ifa_h=ifa_h[i],
-            ifa_l=ifa_l[i],
-            ifa_fp=ifa_fp[i],
-            ifa_w1=ifa_w[i],
-            ifa_w2=ifa_w[i],
-            ifa_wf=ifa_w[i],
-            ifa_e=ifa_e,
-            substrate_epsR=substrate_epsR,
-            feed_R=feed_R,
-            min_freq=min_freq,
-            center_freq=center_freq,
-            max_freq=max_freq,
-            plot=plot,
-            min_size=min_size
-        )
-        #print variables: ifa_h, ifa_l, ifa_fp, ifa_w
-        print(f"ifa_h: {ifa_h[i]}, ifa_l: {ifa_l[i]}, ifa_fp: {ifa_fp[i]}, ifa_w: {ifa_w[i]}")
-        
-        # Assume that the function returns arrays and we need the index where frequency equals the center frequency
-        fitness_results[i] = s11_dB[freq == center_freq]  # Assign fitness based on s11 at the center frequency
+        try:
+            freq, s11_dB, Zin, P_in = ifa_simulation(
+                Sim_CSX=Sim_CSX,
+                showCad=showCad,
+                post_proc_only=post_proc_only,
+                unit=unit,
+                substrate_width=substrate_width,
+                substrate_length=substrate_length,
+                substrate_thickness=substrate_thickness,
+                gndplane_position=gndplane_position,
+                substrate_cells=substrate_cells,
+                ifa_h=ifa_h[i],
+                ifa_l=ifa_l[i],
+                ifa_fp=ifa_fp[i],
+                ifa_w1=ifa_w[i],
+                ifa_w2=ifa_w[i],
+                ifa_wf=ifa_w[i],
+                ifa_e=ifa_e,
+                substrate_epsR=substrate_epsR,
+                feed_R=feed_R,
+                min_freq=min_freq,
+                center_freq=center_freq,
+                max_freq=max_freq,
+                plot=plot,
+                min_size=min_size
+            )
+            
+            # Assume that the function returns arrays and we need the index where frequency equals the center frequency
+            fitness_results[i] = s11_dB[freq == center_freq]  # Assign fitness based on s11 at the center frequency
+
+        except exception as e:
+            logging.warning(f"IndexError during port calculation: {e}. Continuing with the next simulation.")
+            fitness_results[i] = 0
+    
+        # Log the parameters and the corresponding fitness value
+        logging.info(f"Iteration: {i}, ifa_h: {ifa_h[i]}, ifa_l: {ifa_l[i]}, ifa_fp: {ifa_fp[i]}, ifa_w: {ifa_w[i]}, fitness: {fitness_results[i]}")
+
 
     return fitness_results
 
 if __name__ == "__main__":
-    import logging
-    import pyswarms as ps
-    from pyswarms.utils.functions import single_obj as fx
-    import numpy as np
-
-    
     # Setup file logging
     logging.basicConfig(filename='pso_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
-
-
-    # Setup logging
-    logging.basicConfig(level=logging.INFO)
 
     # Define bounds
     bounds = (np.array([1, 10, 1, 0.4]), np.array([14, 19.5, 10, 1]))
     dimensions = 4
-    
+
     # Setup optimizer
     options = {'c1': 1.5, 'c2': 1.5, 'w': 0.9}
     optimizer = ps.single.GlobalBestPSO(n_particles=50, dimensions=4, options=options, bounds=bounds)

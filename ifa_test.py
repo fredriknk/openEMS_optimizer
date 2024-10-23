@@ -21,6 +21,7 @@ from datetime import datetime as dt
 from random import randint
 import numpy as np
 import tempfile
+import hashlib
 
 from pylab import *
 from CSXCAD import ContinuousStructure
@@ -150,19 +151,43 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     unit = 1e-3  # all lengths in mm
     # Derived parameter
     substrate_kappa = 1e-3 * 2 * pi * 2.45e9 * EPS0 * substrate_epsR
-
-    # Get the current timestamp
-    timestamp = dt.now().strftime('%Y%m%d_%H%M%S.%f')
-    timestamp =  f"_{randint(0, 9999):04}_{dt.now().strftime('%Y%m%d_%H%M%S')}"
-
-    # Add the timestamp to the file name
-    Sim_Path = os.path.join(base_path,f'tmp_IFA_{timestamp}')
+    
+    params_tuple = (
+        Sim_CSX,
+        unit,
+        substrate_width,
+        substrate_length,
+        substrate_thickness,
+        gndplane_position,
+        substrate_cells,
+        ifa_h,
+        ifa_l,
+        ifa_w1,
+        ifa_w2,
+        ifa_wf,
+        ifa_fp,
+        ifa_e,
+        substrate_epsR,
+        feed_R,
+        min_size,
+        max_size,
+        f0,
+        fc,
+    )
+     
+    params_str = '_'.join(map(str, params_tuple))
+    # Generate a SHA256 hash of the parameters string
+    params_hash = hashlib.sha256(params_str.encode('utf-8')).hexdigest()
+    # Use the first 8 characters of the hash for brevity
+    hash_prefix = params_hash[:12]
+    # Create the simulation path using the hash
+    Sim_Path = os.path.join(base_path, f'tmp_IFA_{hash_prefix}')
 
     # Simulation box size
     SimBox = np.array([substrate_width * 2, substrate_length * 2, 150])
 
     # Initialize openEMS
-    FDTD = openEMS(NrTS=150000)#, EndCriteria=1e-5)
+    FDTD = openEMS(NrTS=600000)#, EndCriteria=1e-5)
     FDTD.SetGaussExcite(f0, fc)
     FDTD.SetBoundaryCond(['MUR', 'MUR', 'MUR', 'MUR', 'MUR', 'MUR'])
 
@@ -246,14 +271,34 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Add the nf2ff recording box
     nf2ff = FDTD.CreateNF2FFBox()
-
+    
+    temp_file = os.path.join(Sim_Path, 'incomplete_run.flag')
+    
     if os.path.exists(Sim_Path):
-        import shutil
-        shutil.rmtree(Sim_Path)
-    print(f"Creating directory {Sim_Path}")
-    os.mkdir(Sim_Path)
-    CSX_file = os.path.join(Sim_Path, Sim_CSX)
-    CSX.Write2XML(CSX_file)
+        if os.path.exists(temp_file):
+            import shutil
+            print(f"Cleaning up incomplete run: {Sim_Path}")
+            shutil.rmtree(Sim_Path)
+
+    if not os.path.exists(Sim_Path):
+        print(f"Creating directory {Sim_Path}")
+        os.mkdir(Sim_Path)
+        
+        with open(temp_file, 'w') as f:
+            f.write('Running')
+            
+        CSX_file = os.path.join(Sim_Path, Sim_CSX)
+        CSX.Write2XML(CSX_file)
+        
+        try:
+            #FDTD.Run(Sim_Path, verbose=3, cleanup=True)
+            FDTD.Run(Sim_Path, verbose=0, cleanup=False)
+            os.remove(temp_file)
+        except Exception as e:
+            print("An error occurred during simulation:", e)
+            import traceback
+            traceback.print_exc()
+
 
     # Show the structure
     if showCad:
@@ -262,14 +307,6 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Run openEMS
     if not post_proc_only:
-        try:
-            #FDTD.Run(Sim_Path, verbose=3, cleanup=True)
-            FDTD.Run(Sim_Path, verbose=0, cleanup=True)
-        except Exception as e:
-            print("An error occurred during simulation:", e)
-            import traceback
-            traceback.print_exc()
-
         # Post-processing & plotting
         freq = np.linspace(max(1e9, f0 - fc), f0 + fc, 501)
         port.CalcPort(Sim_Path, freq)
@@ -396,12 +433,12 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             plt.figure()
             plt.show()
 
-    return freq, s11_dB, Zin, P_in
-        
+    return freq, s11_dB, Zin, P_in , hash_prefix
+
 #init main function
-if __name__ == "__main__":
+def testrun():
     Sim_CSX = 'IFA.xml'
-    showCad = True
+    showCad = False
     post_proc_only = False
     unit = 1e-3
     substrate_width = 21
@@ -424,7 +461,7 @@ if __name__ == "__main__":
     min_size = 0.2 # minimum automesh size
     plot = True
 
-    freq, s11_dB, f_res, Zin, P_in = ifa_simulation(Sim_CSX=Sim_CSX,
+    freq, s11_dB, Zin, P_in = ifa_simulation(Sim_CSX=Sim_CSX,
                                                     showCad=showCad,
                                                     post_proc_only=post_proc_only,
                                                     unit=post_proc_only,
@@ -451,3 +488,6 @@ if __name__ == "__main__":
 
 
 
+
+if __name__ == "__main__":
+    testrun()

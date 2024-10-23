@@ -185,7 +185,11 @@ fabric.properties
 # idea folder, uncomment if you don't need it
 .idea
 #remove everything in the runs folder
-.runs/*
+runs/*
+
+# exclude logs
+*_log.txt
+*.log
 
 # exclude runs/.gitignore
 !.gitignore
