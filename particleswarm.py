@@ -79,7 +79,7 @@ def evaluation_fun(swarm):
 
 if __name__ == "__main__":
     # Setup file logging
-    logging.basicConfig(filename='pso_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.basicConfig(filename='logs\\pso_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
 
     # Define bounds
     bounds = (np.array([1, 10, 1, 0.4]), np.array([14, 19.5, 10, 1]))

@@ -79,7 +79,7 @@ def evaluation_fun(x, variable_names, fixed_params):
 
 if __name__ == "__main__":
     # Setup file logging
-    logging.basicConfig(filename='powell_optimization_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.basicConfig(filename='logs\\powell_optimization_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
 
     # Fixed parameters
     fixed_params = {

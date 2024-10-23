@@ -77,7 +77,7 @@ def evaluation_fun(x, variable_names, fixed_params):
 
 if __name__ == "__main__":
     # Setup file logging
-    logging.basicConfig(filename='differential_evolution_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.basicConfig(filename='logs\\differential_evolution_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
     from random import random
     # Fixed parameters
     fixed_params = {
