@@ -81,7 +81,7 @@ def evaluation_fun_scalar(x_scalar, variable_names, fixed_params):
 
 if __name__ == "__main__":
     # Setup file logging
-    logging.basicConfig(filename='halfsearch_optimization.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.basicConfig(filename='halfsearch_optimization_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
 
     # Fixed parameters
     fixed_params = {
