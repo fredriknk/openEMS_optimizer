@@ -37,8 +37,9 @@ def evaluation_fun(x, variable_names, fixed_params):
     post_proc_only = False
     unit = 1e-3
     substrate_width = 25
-    substrate_length = 108
+    substrate_length = 40
     substrate_thickness = 1.4
+    mifa_meander = 1.1
     gndplane_position = 0
     substrate_cells = 4
     ifa_e = 0.5
@@ -47,7 +48,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     min_freq = 0.77e9
     center_freq = 0.82e9
     max_freq = 0.87e9
-    min_size = 0.3  # Minimum automesh size
+    min_size = 0.2  # Minimum automesh size
     max_size = 8.0#maximum automesh size
     f0=0.82e9
     fc = 0.5e9
@@ -72,6 +73,7 @@ def evaluation_fun(x, variable_names, fixed_params):
         ifa_w2=ifa_w2,
         ifa_wf=ifa_wf,
         ifa_e=ifa_e,
+        mifa_meander=mifa_meander,
         substrate_epsR=substrate_epsR,
         feed_R=feed_R,
         min_freq=min_freq,
@@ -136,26 +138,26 @@ if __name__ == "__main__":
 
     # Fixed parameters
     fixed_params = {
-        'ifa_l': 83,  # Initial value
-        'ifa_h': 14.5,  
-        'ifa_fp': 4,
+        'ifa_l': 150,  # Initial value
+        'ifa_h': 12.5,  
+        'ifa_fp':  4.75,
         'ifa_w1': 1.5,
-        'ifa_w2': 0.95,
-        'ifa_wf': 0.95,
+        'ifa_w2': 0.7,
+        'ifa_wf': 0.6,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (70, 100),
-        'ifa_h': (14., 18.),
-        'ifa_fp': (1.0, 4.5),
-        'ifa_w1': (0.9, 2.0),
-        'ifa_w2': (0.9, 1.0),
-        'ifa_wf': (0.9, 1.0)
+        'ifa_l': (120, 196),
+        'ifa_h': (12., 18.),
+        'ifa_fp': (1.0, 5),
+        'ifa_w1': (0.6, 2.0),
+        'ifa_w2': (0.6, 0.8),
+        'ifa_wf': (0.6, 0.8)
     }
     
     # Choose variables to optimize
-    variable_names = ['ifa_l', 'ifa_h', 'ifa_fp', 'ifa_wf','ifa_w2','ifa_w1']  # List variables you want to optimize
+    variable_names = ['ifa_l', 'ifa_h', 'ifa_wf','ifa_w2','ifa_w1','ifa_fp']  # List variables you want to optimize
     bcplist = variable_names
 
     for var_name in bcplist:
