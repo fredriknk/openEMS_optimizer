@@ -316,7 +316,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                         current_meander = 1
                         ldfiff_ratio -= 1
                     print(f"Adding meanders ratio: {current_meander}")
-                    if current_meander < 0.05:
+                    if current_meander < 0.02:
                         break
                     #first topline
                     m_start = m_stop+np.array([ifa_w2/2,0,0])
