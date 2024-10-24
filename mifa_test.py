@@ -346,9 +346,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                 start = radiating_element_start
                 stop = m_stop+ np.array([ifa_w2,-ifa_w2,0])
                 ifa.AddBox(start=start, stop=stop, priority=10)
-                meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                meshlines = extend_line(start, stop,min_size,max_size)
                 mesh.AddLine('x',meshlines[0] )
-                #mesh.AddLine('y', meshlines[1]) #this wil allready be added by the meander
+                mesh.AddLine('y', meshlines[1]) #this wil allready be added by the meander
 
     #meshlines = extend_line(start, stop,min_size,max_size)
     #mesh.AddLine('x',meshlines[0] )
@@ -393,7 +393,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         print(f"root location: {root}")
         print(f"csxcad location{AppCSXCAD_BIN}")
         print(f"csxfile location {CSX_file}")
-        os.system( root+"\\"+AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+        os.system( AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
     sim_file = os.path.join(Sim_Path, 'complete_run.flag')
 
@@ -544,7 +544,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 def testrun():
     Sim_CSX = 'IFA.xml'
     showCad = True
-    post_proc_only = True
+    post_proc_only = False
 
     unit = 1e-3
     substrate_width = 21
@@ -552,12 +552,12 @@ def testrun():
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 10.
-    ifa_l = 31
-    ifa_w1 = 1.
-    ifa_w2 = 1.
-    ifa_wf = 1.
-    ifa_fp = 7.0
+    ifa_h = 6.71328965581628
+    ifa_l = 25.33325359936174
+    ifa_w1 = 0.8299108596390603
+    ifa_w2 = 0.9388232358679933
+    ifa_wf = 0.9832158394032445
+    ifa_fp = 6.709396163240471
     ifa_e = 0.5
     mifa_meander=3.0
     mifa_tipdistance=2.0
@@ -597,9 +597,68 @@ def testrun():
                                                     min_size=min_size,
                                                     plot=plot)
 
+def lte():
+    Sim_CSX = 'IFA.xml'
+    showCad = True
+    post_proc_only = True
+
+    unit = 1e-3
+    substrate_width = 25
+    substrate_length = 108
+    substrate_thickness = 1.4
+    gndplane_position = 0
+    substrate_cells = 4
+    ifa_h = 12
+    ifa_l = 86
+    ifa_w1 = 1
+    ifa_w2 = 1
+    ifa_wf = 1
+    ifa_fp = 4
+    ifa_e = 0.5
+    mifa_meander=3.5
+    mifa_tipdistance=2.0
+    mifa_meander_edge_distance=3.0
+    substrate_epsR = 4.5
+    feed_R = 50
+    center_freq = 0.82e9
+    min_freq = 0.77e9
+    max_freq = 0.87e9
+    f0 = 0.82e9
+    fc = 0.5e9
+    min_size = 0.4 # minimum automesh size
+    plot = True
+
+    freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
+                                                    showCad=showCad,
+                                                    post_proc_only=post_proc_only,
+                                                    unit=post_proc_only,
+                                                    substrate_width=substrate_width,
+                                                    substrate_length=substrate_length,
+                                                    substrate_thickness=substrate_thickness,
+                                                    gndplane_position=gndplane_position,
+                                                    substrate_cells=substrate_cells,
+                                                    ifa_h=ifa_h,
+                                                    ifa_l=ifa_l,
+                                                    ifa_w1=ifa_w1,
+                                                    ifa_w2=ifa_w2,
+                                                    ifa_wf=ifa_wf,
+                                                    ifa_fp=ifa_fp,
+                                                    ifa_e=ifa_e,
+                                                    mifa_meander=mifa_meander,
+                                                    mifa_tipdistance=mifa_tipdistance,
+                                                    mifa_meander_edge_distance=mifa_meander_edge_distance,
+                                                    substrate_epsR=substrate_epsR,
+                                                    feed_R=feed_R,
+                                                    min_freq=min_freq,
+                                                    center_freq=center_freq,
+                                                    max_freq=max_freq,
+                                                    min_size=min_size,
+                                                    plot=plot,
+                                                    f0=f0,
+                                                    fc=fc)
 
 
 
 
 if __name__ == "__main__":
-    testrun()
+    lte()
