@@ -48,7 +48,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     min_freq = 0.77e9
     center_freq = 0.82e9
     max_freq = 0.87e9
-    min_size = 0.2  # Minimum automesh size
+    min_size = 0.4  # Minimum automesh size
     max_size = 8.0#maximum automesh size
     f0=0.82e9
     fc = 0.5e9
