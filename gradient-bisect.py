@@ -129,7 +129,7 @@ if __name__ == "__main__":
     # Fixed parameters
     fixed_params = {
         'ifa_l': 23,  # Initial value
-        'ifa_h': 7.5,  
+        'ifa_h': 5.5,  
         'ifa_fp': 5,
         'ifa_w1': 1.5,
         'ifa_w2': 0.5,
