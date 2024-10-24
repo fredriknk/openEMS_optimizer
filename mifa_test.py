@@ -235,7 +235,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Create IFA
     ifa = CSX.AddMetal('ifa')
-    tl = np.array([-substrate_width/2+ifa_e+ifa_fp+ifa_w1, substrate_length / 2 - ifa_e, substrate_thickness])  # translation vector
+    tl = np.array([-substrate_width/2+ifa_e+ifa_fp, substrate_length / 2 - ifa_e, substrate_thickness])  # translation vector
 
 
     # Feed element
@@ -248,7 +248,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Short circuit stub
     start = np.array([-ifa_fp, 0, 0]) + tl
-    stop = start + np.array([-ifa_w1, ifa_h, 0])
+    stop = start + np.array([ifa_w1, ifa_h, 0])
     ifa.AddBox(start=start, stop=stop, priority=10)
 
     meshlines = extend_line(start, stop,min_size,max_size)
@@ -258,7 +258,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     # Radiating element
     if ifa_l < substrate_width-2*ifa_e:
         print('Ifa: ifa_l smaller than substrate width just do normal radiating element')
-        start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
+        start = np.array([-ifa_fp , ifa_h, 0]) + tl
         stop = start + np.array([ifa_l, -ifa_w2, 0])
         ifa.AddBox(start=start, stop=stop, priority=10)
     else:
@@ -266,7 +266,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         length_diff = (ifa_l - (substrate_width-2*ifa_e))
         print('ifa_l larger than substrate width starting meandering')
 
-        radiating_element_start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
+        radiating_element_start = np.array([-ifa_fp , ifa_h, 0]) + tl
         radiating_element_stop = radiating_element_start + np.array([substrate_width-2*ifa_e, -ifa_w2, 0])
 
         
@@ -316,34 +316,38 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                         current_meander = 1
                         ldfiff_ratio -= 1
                     print(f"Adding meanders ratio: {current_meander}")
-                    m_start = m_stop+np.array([ifa_w2,0,0])
+                    #first topline
+                    m_start = m_stop+np.array([ifa_w2/2,0,0])
                     m_stop = m_start + np.array([-mifa_meander,-ifa_w2,0])
                     ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+
                     meshlines = extend_line(m_start, m_stop,min_size,max_size)
                     mesh.AddLine('x',meshlines[0] )
                     mesh.AddLine('y', meshlines[1])
-                    
-                    m_start = m_stop + np.array([0,0,0])
-                    m_stop = m_start + np.array([ifa_w2,-current_meander*max_length_mifa,0])
+
+                    #meander down
+                    m_start = m_stop + np.array([-ifa_w2/2,ifa_w2,0])
+                    m_stop = m_start + np.array([ifa_w2,-current_meander*max_length_mifa-ifa_w2,0])
+                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                    mesh.AddLine('x',meshlines[0] )
+                    mesh.AddLine('y', meshlines[1])
+
+                    #lower meander sideways
+                    m_start = m_stop+ np.array([-ifa_w2/2,0,0])
+                    m_stop = m_start + np.array([-mifa_meander,ifa_w2,0])
                     ifa.AddBox(start=m_start, stop=m_stop, priority=10)
                     meshlines = extend_line(m_start, m_stop,min_size,max_size)
                     mesh.AddLine('x',meshlines[0] )
                     mesh.AddLine('y', meshlines[1])
                     
-                    m_start = m_stop+ np.array([0,0,0])
-                    m_stop = m_start + np.array([-mifa_meander+ifa_w2,ifa_w2,0])
-                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
-                    meshlines = extend_line(m_start, m_stop,min_size,max_size)
-                    mesh.AddLine('x',meshlines[0] )
-                    mesh.AddLine('y', meshlines[1])
-                    
-                    m_start = m_stop + np.array([0,-ifa_w2,0])
+                    m_start = m_stop + np.array([+ifa_w2/2,-ifa_w2,0])
                     m_stop = m_start + np.array([-ifa_w2,+current_meander*max_length_mifa+ifa_w2,0])
                     ifa.AddBox(start=m_start, stop=m_stop, priority=10)
                     meshlines = extend_line(m_start, m_stop,min_size,max_size)
                     mesh.AddLine('x',meshlines[0] )
                     mesh.AddLine('y', meshlines[1])
-                
+
                 #connect to shorting stub    
                 start = radiating_element_start
                 stop = m_stop+ np.array([ifa_w2,-ifa_w2,0])
@@ -606,20 +610,20 @@ def lte():
 
     unit = 1e-3
     substrate_width = 25
-    substrate_length = 108
+    substrate_length = 40
     substrate_thickness = 1.4
     gndplane_position = 0
     substrate_cells = 4
     ifa_h = 12
-    ifa_l = 86
-    ifa_w1 = 1
-    ifa_w2 = 1
-    ifa_wf = 1
-    ifa_fp = 4
+    ifa_l = 230
+    ifa_w1 = 2
+    ifa_w2 = 0.4
+    ifa_wf = 0.6
+    ifa_fp = 5.5
     ifa_e = 0.5
-    mifa_meander=3.5
-    mifa_tipdistance=2.0
-    mifa_meander_edge_distance=3.0
+    mifa_meander=1.
+    mifa_tipdistance=2
+    mifa_meander_edge_distance=3
     substrate_epsR = 4.5
     feed_R = 50
     center_freq = 0.82e9
@@ -627,7 +631,7 @@ def lte():
     max_freq = 0.87e9
     f0 = 0.82e9
     fc = 0.5e9
-    min_size = 0.4 # minimum automesh size
+    min_size = 0.2 # minimum automesh size
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
