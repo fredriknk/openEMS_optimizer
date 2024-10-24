@@ -316,6 +316,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                         current_meander = 1
                         ldfiff_ratio -= 1
                     print(f"Adding meanders ratio: {current_meander}")
+                    if current_meander < 0.05:
+                        break
                     #first topline
                     m_start = m_stop+np.array([ifa_w2/2,0,0])
                     m_stop = m_start + np.array([-mifa_meander,-ifa_w2,0])
@@ -558,12 +560,12 @@ def wifi():
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 7.5
-    ifa_l = 31
+    ifa_h = 5.500
+    ifa_l = 27.459
     ifa_w1 = 1.5
     ifa_w2 = 0.5
     ifa_wf = 0.5
-    ifa_fp = 6
+    ifa_fp = 5.000
     ifa_e = 0.5
     mifa_meander=2.5
     mifa_tipdistance=2.0
@@ -615,7 +617,7 @@ def lte():
     gndplane_position = 0
     substrate_cells = 4
     ifa_h = 12.5
-    ifa_l = 196
+    ifa_l = 50
     ifa_w1 = 1.5
     ifa_w2 = 0.7
     ifa_wf = 0.6
