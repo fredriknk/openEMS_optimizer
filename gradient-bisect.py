@@ -160,18 +160,22 @@ if __name__ == "__main__":
         
         # Use the best initial value as x0 for the optimizer
         x0 = result.x
-        
+
         logging.info(f"Optimizing {var_name} with L-BFGS-B within bounds: {variable_bounds[var_name]} starting from x0: {x0}")
-        
+
+        # Calculate bounds for this variable
+        lower_bound = x0 - (bounds[0][1] - bounds[0][0]) / 10
+        upper_bound = x0 + (bounds[0][1] - bounds[0][0]) / 10
+
+        # Use minimize for further optimization
         result = minimize(
             evaluation_fun,
-            x0,
+            [x0],  # Wrap x0 in a list for compatibility with minimize
             args=(variable_names, fixed_params_copy),
             method='L-BFGS-B',
-            bounds=[x0-(bounds[0][1]-bounds[0][0])/10, x0+(bounds[0][1]-bounds[0][0])/10],
-            options={'disp': True, "eps":1e-6}
-        )
-
+            bounds=[(lower_bound, upper_bound)],  # Wrap the bounds in a list of tuples
+            options={'disp': True, "eps": 1e-6}
+)
         fixed_params[var_name] = result.x[0]
         logging.info(f"Optimized {var_name}: {fixed_params[var_name]}, Objective function value: {result.fun}")
 
