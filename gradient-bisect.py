@@ -9,12 +9,19 @@ def evaluation_fun(x, variable_names, fixed_params):
     params = fixed_params.copy()
     
     if len(variable_names) == 1:
-        # Directly assign if only one variable
-        params[variable_names[0]] = x
+        # Ensure x is a scalar
+        if isinstance(x, (list, np.ndarray)):
+            params[variable_names[0]] = x[0]
+        else:
+            params[variable_names[0]] = x
     else:
-        # Otherwise, treat x as a vector
+        # Treat x as a vector
         for i, var_name in enumerate(variable_names):
             params[var_name] = x[i]
+
+    # Debugging: Verify parameter types
+    for key, value in params.items():
+        print(f"{key}: {value}, type: {type(value)}")
 
     # Extract parameters
     ifa_h = params['ifa_h']
@@ -152,10 +159,10 @@ if __name__ == "__main__":
         
         result = minimize_scalar(
             evaluation_fun,
-            bounds=(bounds[0][0],bounds[0][1]),
+            bounds=(bounds[0][0], bounds[0][1]),
             method='bounded',
             args=(variable_names, fixed_params_copy),
-            options={'xatol': (bounds[0][1]-bounds[0][0])/100}  # Stop when the interval is smaller than 1/100th the bounds
+            options={'xatol': (bounds[0][1] - bounds[0][0]) / 100}  # Stop when the interval is smaller than 1/100th the bounds
         )
         
         # Use the best initial value as x0 for the optimizer
@@ -167,16 +174,21 @@ if __name__ == "__main__":
         lower_bound = x0 - (bounds[0][1] - bounds[0][0]) / 10
         upper_bound = x0 + (bounds[0][1] - bounds[0][0]) / 10
 
+        # Ensure bounds are within the original variable bounds
+        lower_bound = max(lower_bound, variable_bounds[var_name][0])
+        upper_bound = min(upper_bound, variable_bounds[var_name][1])
+
         # Use minimize for further optimization
         result = minimize(
             evaluation_fun,
-            [x0],  # Wrap x0 in a list for compatibility with minimize
+            x0,  # Pass x0 as scalar
             args=(variable_names, fixed_params_copy),
             method='L-BFGS-B',
-            bounds=[(lower_bound, upper_bound)],  # Wrap the bounds in a list of tuples
+            bounds=[(lower_bound, upper_bound)],
             options={'disp': True, "eps": 1e-6}
-)
-        fixed_params[var_name] = result.x[0]
+        )
+
+        fixed_params[var_name] = result.x
         logging.info(f"Optimized {var_name}: {fixed_params[var_name]}, Objective function value: {result.fun}")
 
     # Log the final optimized parameters
