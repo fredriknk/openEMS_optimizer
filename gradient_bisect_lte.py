@@ -36,111 +36,119 @@ def evaluation_fun(x, variable_names, fixed_params):
     showCad = False
     post_proc_only = False
     unit = 1e-3
-    substrate_width = 21
-    substrate_length = 40
-    substrate_thickness = 1.5
+    substrate_width = 25
+    substrate_length = 108
+    substrate_thickness = 1.4
     gndplane_position = 0
     substrate_cells = 4
     ifa_e = 0.5
     substrate_epsR = 4.5
     feed_R = 50
-    min_freq = 2.4e9
-    center_freq = 2.45e9
-    max_freq = 2.5e9
+    min_freq = 0.77e9
+    center_freq = 0.82e9
+    max_freq = 0.87e9
     min_size = 0.2  # Minimum automesh size
+    max_size = 8.0#maximum automesh size
+    f0=0.82e9
+    fc = 0.5e9
+    max_timesteps=10e6
     plot = False
 
-    try:
-        freq, s11_dB, Zin, P_in,hash_prefix = ifa_simulation(
-            Sim_CSX=Sim_CSX,
-            showCad=showCad,
-            post_proc_only=post_proc_only,
-            unit=unit,
-            substrate_width=substrate_width,
-            substrate_length=substrate_length,
-            substrate_thickness=substrate_thickness,
-            gndplane_position=gndplane_position,
-            substrate_cells=substrate_cells,
-            ifa_h=ifa_h,
-            ifa_l=ifa_l,
-            ifa_fp=ifa_fp,
-            ifa_w1=ifa_w1,
-            ifa_w2=ifa_w2,
-            ifa_wf=ifa_wf,
-            ifa_e=ifa_e,
-            substrate_epsR=substrate_epsR,
-            feed_R=feed_R,
-            min_freq=min_freq,
-            center_freq=center_freq,
-            max_freq=max_freq,
-            plot=plot,
-            min_size=min_size
-        )
+    #try:
+    freq, s11_dB, Zin, P_in,hash_prefix = ifa_simulation(
+        Sim_CSX=Sim_CSX,
+        showCad=showCad,
+        post_proc_only=post_proc_only,
+        unit=unit,
+        substrate_width=substrate_width,
+        substrate_length=substrate_length,
+        substrate_thickness=substrate_thickness,
+        gndplane_position=gndplane_position,
+        substrate_cells=substrate_cells,
+        ifa_h=ifa_h,
+        ifa_l=ifa_l,
+        ifa_fp=ifa_fp,
+        ifa_w1=ifa_w1,
+        ifa_w2=ifa_w2,
+        ifa_wf=ifa_wf,
+        ifa_e=ifa_e,
+        substrate_epsR=substrate_epsR,
+        feed_R=feed_R,
+        min_freq=min_freq,
+        center_freq=center_freq,
+        max_freq=max_freq,
+        plot=plot,
+        min_size=min_size,
+        max_size=max_size,
+        f0=f0,
+        max_timesteps=max_timesteps,
+        fc=fc
+    )
 
-        # Get the S11 value at the center frequency
-        idx = np.argmin(np.abs(freq - center_freq))
-        s11_value = s11_dB[idx]
-        #round value to 2 decimal places
-        
-        f_res_ind = np.argmin(s11_dB)
-        f_res = freq[f_res_ind]
-        s_11_min = s11_dB[f_res_ind]
-        #bandwidth at xDB
-        minS11 = -6
-        
-        first_crossing = -1
-        last_crossing = -1
-        if f_res_ind != 0 and s_11_min < minS11:
-            for i in range(0, f_res_ind):
-                if s11_dB[i] < minS11:
-                    first_crossing = freq[i]
-                    break
+    # Get the S11 value at the center frequency
+    idx = np.argmin(np.abs(freq - center_freq))
+    s11_value = s11_dB[idx]
+    #round value to 2 decimal places
+    
+    f_res_ind = np.argmin(s11_dB)
+    f_res = freq[f_res_ind]
+    s_11_min = s11_dB[f_res_ind]
+    #bandwidth at xDB
+    minS11 = -6
+    
+    first_crossing = -1
+    last_crossing = -1
+    if f_res_ind != 0 and s_11_min < minS11:
+        for i in range(0, f_res_ind):
+            if s11_dB[i] < minS11:
+                first_crossing = freq[i]
+                break
 
-            # Find the last frequency crossing over -10 dB after f_res_ind
+        # Find the last frequency crossing over -10 dB after f_res_ind
 
-            for i in range(f_res_ind, len(s11_dB)):
-                if s11_dB[i] > minS11:
-                    last_crossing = freq[i]
-                    break
-        
-        impedance = np.real(Zin[idx])
-        reactance = np.imag(Zin[idx])
-        
-        bandwidth = -1
-        #specify the bandwidth:
-        if first_crossing is not -1 or last_crossing is not -1:
-            bandwidth = last_crossing - first_crossing  
-        
-        # Log parameters and objective function values
-        res = 4
-        logging.info(f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, ifa_w1: {ifa_w1:.3f},ifa_w1: {ifa_w2:.3f},ifa_wf: {ifa_wf:.3f}, S11 at cf: {s11_value:.4f}, Imp:{impedance:.1f}R {reactance:.1f}z, Res f:{f_res/1e9:.3f} GHz, S11 at res:{s_11_min:.3f}, BW1:{first_crossing/1e9:.2f} GHz, BW2:{last_crossing/1e9:.2f} GHz, BW = {bandwidth/1e6:.1f} MHz - id {hash_prefix}")
-        # Return the magnitude (since we want to minimize it)
-        return s11_value
+        for i in range(f_res_ind, len(s11_dB)):
+            if s11_dB[i] > minS11:
+                last_crossing = freq[i]
+                break
+    
+    impedance = np.real(Zin[idx])
+    reactance = np.imag(Zin[idx])
+    
+    bandwidth = -1
+    #specify the bandwidth:
+    if first_crossing is not -1 or last_crossing is not -1:
+        bandwidth = last_crossing - first_crossing  
+    
+    # Log parameters and objective function values
+    res = 4
+    logging.info(f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, ifa_w1: {ifa_w1:.3f},ifa_w1: {ifa_w2:.3f},ifa_wf: {ifa_wf:.3f}, S11 at cf: {s11_value:.4f}, Imp:{impedance:.1f}R {reactance:.1f}z, Res f:{f_res/1e9:.3f} GHz, S11 at res:{s_11_min:.3f}, BW1:{first_crossing/1e9:.2f} GHz, BW2:{last_crossing/1e9:.2f} GHz, BW = {bandwidth/1e6:.1f} MHz - id {hash_prefix}")
+    # Return the magnitude (since we want to minimize it)
+    return s11_value
 
-    except Exception as e:
-        logging.info(f"Exception during simulation: {e}.")
-        return np.inf  # Return a high value to indicate failure
+    #except Exception as e:
+    #    logging.info(f"Exception during simulation: {e}.")
+    #    return np.inf  # Return a high value to indicate failure
 
 
 if __name__ == "__main__":
     # Setup file logging
-    logging.basicConfig(filename='logs\\gradient_bisect_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+    logging.basicConfig(filename='logs\\gradient_bisect_lte_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
 
     # Fixed parameters
     fixed_params = {
         'ifa_l': 20,  # Initial value
         'ifa_h': 7.5,  
-        'ifa_fp': 5,
-        'ifa_w1': 1.,
+        'ifa_fp': 4,
+        'ifa_w1': 1.0,
         'ifa_w2': 0.5,
         'ifa_wf': 0.5,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (16, 31),
-        'ifa_h': (5., 16.0),
-        'ifa_fp': (1.0, 7),
+        'ifa_l': (16, 53),
+        'ifa_h': (7., 16.0),
+        'ifa_fp': (1.0, 5.),
         'ifa_w1': (0.4, 1.5),
         'ifa_w2': (0.4, 1.0),
         'ifa_wf': (0.4, 1.5)

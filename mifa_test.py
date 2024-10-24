@@ -128,6 +128,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    max_size = 4.0,#maximum automesh size
                    f0=2.45e9,  # center frequency
                    fc = 1.0e9,  # 20 dB corner frequency
+                   max_timesteps=600000,
                    plot=True):
     #############################################################################
     #                substrate_width
@@ -178,6 +179,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         feed_R,
         min_size,
         max_size,
+        max_timesteps,
         f0,
         fc,
     )
@@ -194,7 +196,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     SimBox = np.array([substrate_width * 2, substrate_length * 2, 150])
 
     # Initialize openEMS
-    FDTD = openEMS(NrTS=600000)#, EndCriteria=1e-5)
+    FDTD = openEMS(NrTS=max_timesteps)#, EndCriteria=1e-5)
     FDTD.SetGaussExcite(f0, fc)
     FDTD.SetBoundaryCond(['MUR', 'MUR', 'MUR', 'MUR', 'MUR', 'MUR'])
 
