@@ -193,7 +193,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     Sim_Path = os.path.join(base_path, f'tmp_IFA_{hash_prefix}')
 
     # Simulation box size
-    SimBox = np.array([substrate_width * 2, substrate_length * 2, 150])
+    SimBox = np.array([substrate_width * 2, (substrate_length+2*ifa_h) * 2, 150])
 
     # Initialize openEMS
     FDTD = openEMS(NrTS=max_timesteps)#, EndCriteria=1e-5)
@@ -229,9 +229,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     stop = [substrate_width/2-ifa_e, substrate_length/2 - ifa_e, substrate_thickness+gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
-    #meshlines = extend_line(start, stop,min_size,max_size)
-    #mesh.AddLine('x',meshlines[0] )
-    #mesh.AddLine('y', meshlines[1])
+    meshlines = extend_line(start, stop,min_size,max_size)
+    mesh.AddLine('x',meshlines[0] )
+    mesh.AddLine('y', meshlines[1])
 
     # Create IFA
     ifa = CSX.AddMetal('ifa')
@@ -547,10 +547,10 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         return freq, s11_dB, Zin, P_in , hash_prefix
     return None, None, None, None, None
 #init main function
-def testrun():
+def wifi():
     Sim_CSX = 'IFA.xml'
     showCad = True
-    post_proc_only = False
+    post_proc_only = True
 
     unit = 1e-3
     substrate_width = 21
@@ -558,14 +558,14 @@ def testrun():
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 6.71328965581628
-    ifa_l = 25.33325359936174
-    ifa_w1 = 0.8299108596390603
-    ifa_w2 = 0.9388232358679933
-    ifa_wf = 0.9832158394032445
-    ifa_fp = 6.709396163240471
+    ifa_h = 7.5
+    ifa_l = 31
+    ifa_w1 = 1.5
+    ifa_w2 = 0.5
+    ifa_wf = 0.5
+    ifa_fp = 6
     ifa_e = 0.5
-    mifa_meander=3.0
+    mifa_meander=2.5
     mifa_tipdistance=2.0
     mifa_meander_edge_distance=3.0
     substrate_epsR = 4.5
@@ -614,14 +614,14 @@ def lte():
     substrate_thickness = 1.4
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 12
-    ifa_l = 230
-    ifa_w1 = 2
-    ifa_w2 = 0.4
+    ifa_h = 12.5
+    ifa_l = 196
+    ifa_w1 = 1.5
+    ifa_w2 = 0.7
     ifa_wf = 0.6
-    ifa_fp = 5.5
+    ifa_fp = 4.75
     ifa_e = 0.5
-    mifa_meander=1.
+    mifa_meander=1.1
     mifa_tipdistance=2
     mifa_meander_edge_distance=3
     substrate_epsR = 4.5
@@ -631,7 +631,7 @@ def lte():
     max_freq = 0.87e9
     f0 = 0.82e9
     fc = 0.5e9
-    min_size = 0.2 # minimum automesh size
+    min_size = 0.4 # minimum automesh size
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
