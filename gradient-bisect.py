@@ -141,13 +141,13 @@ if __name__ == "__main__":
         'ifa_l': (16, 31),
         'ifa_h': (5., 16.0),
         'ifa_fp': (1.0, 6),
-        'ifa_w1': (0.4, 2),
+        'ifa_w1': (0.35, 3),
         'ifa_w2': (0.4, 1.0),
         'ifa_wf': (0.4, 1.5)
     }
     
     # Choose variables to optimize
-    variable_names = ['ifa_l', 'ifa_h', 'ifa_wf','ifa_w2','ifa_w1','ifa_fp']  # List variables you want to optimize
+    variable_names = ['ifa_l', 'ifa_w1', 'ifa_l','ifa_w2','ifa_wf','ifa_fp','ifa_h']  # List variables you want to optimize
     bcplist = variable_names
 
     for var_name in bcplist:
