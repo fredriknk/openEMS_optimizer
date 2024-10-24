@@ -117,7 +117,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    ifa_fp=5.368,
                    ifa_e=0.5,
                    mifa_meander=3.0,
-                   mifa_edgedistance=2.0,
+                   mifa_tipdistance=2.0,
+                   mifa_meander_edge_distance=3.0,
                    substrate_epsR=4.5,
                    feed_R=50,
                    min_freq=2.4e9,
@@ -170,6 +171,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         ifa_wf,
         ifa_fp,
         ifa_e,
+        mifa_meander,
+        mifa_tipdistance,
+        mifa_meander_edge_distance,
         substrate_epsR,
         feed_R,
         min_size,
@@ -223,9 +227,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     stop = [substrate_width/2-ifa_e, substrate_length/2 - ifa_e, substrate_thickness+gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
-    meshlines = extend_line(start, stop,min_size,max_size)
-    mesh.AddLine('x',meshlines[0] )
-    mesh.AddLine('y', meshlines[1])
+    #meshlines = extend_line(start, stop,min_size,max_size)
+    #mesh.AddLine('x',meshlines[0] )
+    #mesh.AddLine('y', meshlines[1])
 
     # Create IFA
     ifa = CSX.AddMetal('ifa')
@@ -251,65 +255,104 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Radiating element
     if ifa_l < substrate_width-2*ifa_e:
-        print('Ifa: ifa_l smaller than substrate width')
+        print('Ifa: ifa_l smaller than substrate width just do normal radiating element')
         start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
         stop = start + np.array([ifa_l, -ifa_w2, 0])
         ifa.AddBox(start=start, stop=stop, priority=10)
     else:
-        ldiff = (ifa_l - (substrate_width-ifa_e))
-        print('Ifa: ifa_l larger than substrate width starting meandering')
+        #check if we can add a tip element
+        length_diff = (ifa_l - (substrate_width-2*ifa_e))
+        print('ifa_l larger than substrate width starting meandering')
 
-        start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
-        stop = start + np.array([substrate_width-2*ifa_e, -ifa_w2, 0])
+        radiating_element_start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
+        radiating_element_stop = radiating_element_start + np.array([substrate_width-2*ifa_e, -ifa_w2, 0])
 
-
+        
         #distance to gndedge = ifa_h
-        max_edgelength = ifa_h-mifa_edgedistance
-        print(f"max_edgelength: {max_edgelength}")
-
-        #ldiff = 3.5
-        #max_edgelength = 4.0
-        meanders = ldiff//max_edgelength
-        ldfiff_ratio = ldiff / max_edgelength
-
-        if meanders >= 1:
-            tiplength = 1*max_edgelength
-            meanders -= 1
-            ldfiff_ratio -= 1
-        else:
-            tiplength = ldiff
+        max_length_mifa = ifa_h-mifa_meander_edge_distance    
+        max_edgelength_tip = ifa_h-mifa_tipdistance
+        
+        if length_diff < max_edgelength_tip:
+            print(f"only the tip {length_diff} < {max_edgelength_tip}")
+            start= radiating_element_stop + np.array([0,+ifa_w2,0])
+            stop = start + np.array([-ifa_w2, -length_diff-ifa_w2, 0])
+            
             ifa.AddBox(start=start, stop=stop, priority=10)
+            meshlines = extend_line(start, stop,min_size,max_size)
+            mesh.AddLine('x',meshlines[0] )
+            mesh.AddLine('y', meshlines[1])
+            
+            length_diff -= max_edgelength_tip
+            ifa.AddBox(start=radiating_element_start, stop=radiating_element_stop, priority=10)
+            meshlines = extend_line(radiating_element_start, radiating_element_stop,min_size,max_size)
+            mesh.AddLine('x',meshlines[0] )
+            mesh.AddLine('y', meshlines[1])
+            length_diff -= max_edgelength_tip
+            
+        else:
+            #maximize tip element
+            start= radiating_element_stop + np.array([0,+ifa_w2,0])
+            stop = start + np.array([-ifa_w2, -max_edgelength_tip-ifa_w2, 0])
+            ifa.AddBox(start=start, stop=stop, priority=10)
+            meshlines = extend_line(start, stop,min_size,max_size)
+            mesh.AddLine('x',meshlines[0] )
+            mesh.AddLine('y', meshlines[1])
+            length_diff -= max_edgelength_tip
+            print("Adding tip element{max_edgelength_tip}")
+            
+            #add meanders for remainder of distance
+            ldfiff_ratio = length_diff /(max_length_mifa*2)
+            print(f"ldfiff_ratio: {ldfiff_ratio}")
+            if ldfiff_ratio > 0:
+                m_stop = start+np.array([-ifa_w2,0,0])
+                while ldfiff_ratio > 0:
+                    print(f"current ldfiff_ratio: {ldfiff_ratio}")
+                    if ldfiff_ratio < 1:
+                        current_meander = ldfiff_ratio
+                        ldfiff_ratio = 0
+                    else:
+                        current_meander = 1
+                        ldfiff_ratio -= 1
+                    print(f"Adding meanders ratio: {current_meander}")
+                    m_start = m_stop+np.array([ifa_w2,0,0])
+                    m_stop = m_start + np.array([-mifa_meander,-ifa_w2,0])
+                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                    mesh.AddLine('x',meshlines[0] )
+                    mesh.AddLine('y', meshlines[1])
+                    
+                    m_start = m_stop + np.array([0,0,0])
+                    m_stop = m_start + np.array([ifa_w2,-current_meander*max_length_mifa,0])
+                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                    mesh.AddLine('x',meshlines[0] )
+                    mesh.AddLine('y', meshlines[1])
+                    
+                    m_start = m_stop+ np.array([0,0,0])
+                    m_stop = m_start + np.array([-mifa_meander+ifa_w2,ifa_w2,0])
+                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                    mesh.AddLine('x',meshlines[0] )
+                    mesh.AddLine('y', meshlines[1])
+                    
+                    m_start = m_stop + np.array([0,-ifa_w2,0])
+                    m_stop = m_start + np.array([-ifa_w2,+current_meander*max_length_mifa+ifa_w2,0])
+                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                    mesh.AddLine('x',meshlines[0] )
+                    mesh.AddLine('y', meshlines[1])
+                
+                #connect to shorting stub    
+                start = radiating_element_start
+                stop = m_stop+ np.array([ifa_w2,-ifa_w2,0])
+                ifa.AddBox(start=start, stop=stop, priority=10)
+                meshlines = extend_line(m_start, m_stop,min_size,max_size)
+                mesh.AddLine('x',meshlines[0] )
+                #mesh.AddLine('y', meshlines[1]) #this wil allready be added by the meander
 
-        print(f"ldiff: {ldiff}, meanders: {meanders},ldiff_ratio {ldfiff_ratio} tiplength: {tiplength}")
-        start= np.array([0,+ifa_w2,0])+stop
-        stop = start + np.array([-ifa_w2, -tiplength-ifa_w2, 0])
-        ifa.AddBox(start=start, stop=stop, priority=10)
-
-        if ldfiff_ratio > 0:
-            m_start = start
-            m_stop = m_start + np.array([-mifa_meander-ifa_w2,-ifa_w2,0])
-            ifa.AddBox(start=m_start, stop=m_stop, priority=10)
-
-
-        #start = np.array([-ifa_fp - ifa_w1, ifa_h, 0]) + tl
-        #stop = start + np.array([substrate_width-mifa_meander-ifa_e, -ifa_w2, 0])
-        #ifa.AddBox(start=start, stop=stop, priority=10)
-
-        #start= stop
-        #stop = start + np.array([-ifa_w2, -ldiff/2, 0])
-        #ifa.AddBox(start=start, stop=stop, priority=10)
-
-        #start = stop
-        #stop = start + np.array([mifa_meander, ifa_w2, 0])
-        #ifa.AddBox(start=start, stop=stop, priority=10)
-
-        #start = stop
-        #stop = start + np.array([-ifa_w2, ldiff/2, 0])
-        #ifa.AddBox(start=start, stop=stop, priority=10)
-
-    meshlines = extend_line(start, stop,min_size,max_size)
-    mesh.AddLine('x',meshlines[0] )
-    mesh.AddLine('y', meshlines[1])
+    #meshlines = extend_line(start, stop,min_size,max_size)
+    #mesh.AddLine('x',meshlines[0] )
+    #mesh.AddLine('y', meshlines[1])
 
     #Apply the excitation & resistor as a current source
     start = np.array([0, 0, 0]) + tl
@@ -347,10 +390,10 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     if showCad:
         from CSXCAD import AppCSXCAD_BIN
         print("showing cad")
-        print(root)
-        print(AppCSXCAD_BIN)
-        print(f"{CSX_file}")
-        os.system( AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+        print(f"root location: {root}")
+        print(f"csxcad location{AppCSXCAD_BIN}")
+        print(f"csxfile location {CSX_file}")
+        os.system( root+"\\"+AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
 
     sim_file = os.path.join(Sim_Path, 'complete_run.flag')
 
@@ -368,134 +411,134 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             print("An error occurred during simulation:", e)
             import traceback
             traceback.print_exc()
+    if os.path.exists(sim_file):
+        # Post-processing & plotting
+        freq = np.linspace(max(1e9, f0 - fc), f0 + fc, 501)
+        port.CalcPort(Sim_Path, freq)
 
-    # Post-processing & plotting
-    freq = np.linspace(max(1e9, f0 - fc), f0 + fc, 501)
-    port.CalcPort(Sim_Path, freq)
+        Zin = port.uf_tot / port.if_tot
+        s11 = port.uf_ref / port.uf_inc
+        s11_dB = 20.0*np.log10(np.abs(s11))
+        P_in = np.real(0.5 * port.uf_tot * np.conj(port.if_tot))
 
-    Zin = port.uf_tot / port.if_tot
-    s11 = port.uf_ref / port.uf_inc
-    s11_dB = 20.0*np.log10(np.abs(s11))
-    P_in = np.real(0.5 * port.uf_tot * np.conj(port.if_tot))
-
-    thetaRange = np.arange(0, 182, 2)
-    phiRange = np.arange(0, 362, 2) - 180
-    idx = np.where((s11_dB < -10) & (s11_dB == np.min(s11_dB)))[0]
-
-    if len(idx) != 1:
-        print('No resonance frequency found for far-field calculation')
-    else:
-        f_res_ind = np.argmin(np.abs(s11))
-        f_res = freq[f_res_ind]
-
-        theta = np.arange(-180.0, 180.0, 2.0)
-        # Create the bottom-right polar subplot (axs[1, 1]) for the xy-plane
-        phi = theta
-        nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([0, 0, 0]) * unit, read_cached=True, outfile='nf2ff_xy.h5')
-
-        print('Radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
-        print('Directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0],
-                                                                10 * np.log10(nf2ff_res_theta90.Dmax[0])))
-        print('Efficiency:   nu_rad = {:.1f} %'.format(100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])))
-
-        print(f"Resonance frequency: {f_res/1e9} GHz")
-        #s11 at closste to center frequency
-        print(f"S11 at resonance frequency: {s11_dB[f_res_ind]} dB")
-
-    print(f"S11 at center frequency{ s11_dB[freq == center_freq]} dB")
-
-    if plot:
-        # Create a figure with subplots, 2 rows and 2 columns
-        fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-
-        # Plot feed point impedance in the top-left subplot (axs[0, 0])
-        axs[0, 0].plot(freq / 1e6, np.real(Zin), 'k-', linewidth=2, label='Re{Zin}')
-        axs[0, 0].plot(freq / 1e6, np.imag(Zin), 'r--', linewidth=2, label='Im{Zin}')
-        # Add a horizontal line at 50 Ohms
-        axs[0, 0].axhline(feed_R, color='blue', linestyle='--', linewidth=1, label=f'{feed_R} Ohm')
-        axs[0, 0].axvline(min_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{min_freq/1e6} MHz')
-        axs[0, 0].axvline(center_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{center_freq/1e6} MHz')
-        axs[0, 0].axvline(max_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{max_freq/1e6} MHz')
-
-
-        # Customize the grid, title, labels, and legend
-        axs[0, 0].grid()
-        axs[0, 0].set_title('Feed point impedance')
-        axs[0, 0].set_xlabel('Frequency f / MHz')
-        axs[0, 0].set_ylabel('Impedance Zin / Ohm')
-        axs[0, 0].legend()
-
-
-        # Plot reflection coefficient S11 in the top-right subplot (axs[0, 1])
-        axs[0, 1].plot(freq / 1e6, 20 * np.log10(np.abs(s11)), 'k-', linewidth=2,label='S11(db)')
-
-        cutoffDB = -6
-        axs[0, 1].axhline(cutoffDB, color='blue', linestyle='--', linewidth=1, label=f'{cutoffDB} dB Cutoff')
-        axs[0, 1].axvline(min_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{min_freq/1e6} MHz')
-        axs[0, 1].axvline(center_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{center_freq/1e6} MHz')
-        axs[0, 1].axvline(max_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{max_freq/1e6} MHz')
-
-        axs[0, 1].grid()
-        axs[0, 1].set_title('Reflection coefficient S11')
-        axs[0, 1].set_xlabel('Frequency f / MHz')
-        axs[0, 1].set_ylabel('Reflection coefficient |S11| (dB)')
-        axs[0, 1].legend()
-        # For polar subplots, calculate NF2FF if the resonance frequency is found
+        thetaRange = np.arange(0, 182, 2)
+        phiRange = np.arange(0, 362, 2) - 180
+        idx = np.where((s11_dB < -10) & (s11_dB == np.min(s11_dB)))[0]
 
         if len(idx) != 1:
             print('No resonance frequency found for far-field calculation')
         else:
-            # Find resonance frequency from s11
-            print("Calculate NF2FF")
-            nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, verbose=0, outfile='3D_Pattern.h5')
+            f_res_ind = np.argmin(np.abs(s11))
+            f_res = freq[f_res_ind]
 
-            # Create the bottom-left polar subplot (axs[1, 0]) for the xz-plane
-            ax_polar1 = plt.subplot(223, polar=True)
-            E_norm = 20.0 * np.log10(nf2ff_res_phi0.E_norm / np.max(nf2ff_res_phi0.E_norm)) + nf2ff_res_phi0.Dmax
-            ax_polar1.plot(np.deg2rad(theta), 10 ** (np.squeeze(E_norm) / 20), linewidth=2, label='xz-plane')
-            ax_polar1.grid(True)
-            ax_polar1.set_xlabel('theta (deg)')
-            ax_polar1.set_theta_zero_location('N')
-            ax_polar1.set_theta_direction(-1)
-            ax_polar1.legend(loc=3)
+            theta = np.arange(-180.0, 180.0, 2.0)
+            # Create the bottom-right polar subplot (axs[1, 1]) for the xy-plane
+            phi = theta
+            nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([0, 0, 0]) * unit, read_cached=True, outfile='nf2ff_xy.h5')
+
+            print('Radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
+            print('Directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0],
+                                                                    10 * np.log10(nf2ff_res_theta90.Dmax[0])))
+            print('Efficiency:   nu_rad = {:.1f} %'.format(100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])))
+
+            print(f"Resonance frequency: {f_res/1e9} GHz")
+            #s11 at closste to center frequency
+            print(f"S11 at resonance frequency: {s11_dB[f_res_ind]} dB")
+
+        print(f"S11 at center frequency{ s11_dB[freq == center_freq]} dB")
+
+        if plot:
+            # Create a figure with subplots, 2 rows and 2 columns
+            fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+
+            # Plot feed point impedance in the top-left subplot (axs[0, 0])
+            axs[0, 0].plot(freq / 1e6, np.real(Zin), 'k-', linewidth=2, label='Re{Zin}')
+            axs[0, 0].plot(freq / 1e6, np.imag(Zin), 'r--', linewidth=2, label='Im{Zin}')
+            # Add a horizontal line at 50 Ohms
+            axs[0, 0].axhline(feed_R, color='blue', linestyle='--', linewidth=1, label=f'{feed_R} Ohm')
+            axs[0, 0].axvline(min_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{min_freq/1e6} MHz')
+            axs[0, 0].axvline(center_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{center_freq/1e6} MHz')
+            axs[0, 0].axvline(max_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{max_freq/1e6} MHz')
 
 
-            ax_polar2 = plt.subplot(224, polar=True)
-            E_norm = 20.0 * np.log10(nf2ff_res_theta90.E_norm / np.max(nf2ff_res_theta90.E_norm)) + nf2ff_res_theta90.Dmax
-            ax_polar2.plot(np.deg2rad(phi), 10 ** (np.squeeze(E_norm) / 20), linewidth=2, label='xy-plane')
-            ax_polar2.grid(True)
-            ax_polar2.set_xlabel('phi (deg)')
-            plt.suptitle('IFA Antenna Pattern\nFrequency: {:.2f} GHz'.format(f_res / 1e9), fontsize=14)
-            ax_polar2.legend(loc=3)
+            # Customize the grid, title, labels, and legend
+            axs[0, 0].grid()
+            axs[0, 0].set_title('Feed point impedance')
+            axs[0, 0].set_xlabel('Frequency f / MHz')
+            axs[0, 0].set_ylabel('Impedance Zin / Ohm')
+            axs[0, 0].legend()
 
-        # Prepare the parameters text with table-like formatting
-        parameters_text = (
-            f"{'IFA Parameters:':<30}\n"
-            f"{'ifa_h:':<20}{ifa_h:>10.3f} mm "
-            f"{'ifa_l:':<20}{ifa_l:>10.3f} mm\n"
-            f"{'ifa_w1:':<20}{ifa_w1:>10.3f} mm "
-            f"{'ifa_w2:':<20}{ifa_w2:>10.3f} mm\n"
-            f"{'ifa_wf:':<20}{ifa_wf:>10.3f} mm "
-            f"{'ifa_fp:':<20}{ifa_fp:>10.3f} mm\n"
-            f"{'ifa_e:':<20}{ifa_e:>10.3f} mm "
-            f"{'ifa_h + ifa_e:':<20}{ifa_h+ifa_e:>10.3f} mm\n\n"
-            f"{'Substrate Properties:':<30}\n"
-            f"{'substrate_epsR:':<20}{substrate_epsR:>10.3f} "
-            f"{'substrate_kappa:':<20}{substrate_kappa:>10.3e} S/m\n\n"
-            f"{'Feeding Setup:':<30}\n"
-            f"{'feed_R:':<20}{feed_R:>10} Ω"
-        )
-        # Add the parameters text to the figure at the bottom
-        fig.text(0.5, 0.01, parameters_text, ha='center', va='bottom', fontsize=12, family='monospace')
 
-        # Adjust layout to prevent overlap with the text
-        plt.tight_layout(rect=[0, 0.2, 1, 0.95])  # Adjust rect to leave space at bottom and top
+            # Plot reflection coefficient S11 in the top-right subplot (axs[0, 1])
+            axs[0, 1].plot(freq / 1e6, 20 * np.log10(np.abs(s11)), 'k-', linewidth=2,label='S11(db)')
 
-        # Show all plots
-        plt.figure()
-        plt.show()
+            cutoffDB = -6
+            axs[0, 1].axhline(cutoffDB, color='blue', linestyle='--', linewidth=1, label=f'{cutoffDB} dB Cutoff')
+            axs[0, 1].axvline(min_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{min_freq/1e6} MHz')
+            axs[0, 1].axvline(center_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{center_freq/1e6} MHz')
+            axs[0, 1].axvline(max_freq/1e6, color='green', linestyle='--', linewidth=1, label=f'{max_freq/1e6} MHz')
 
-    return freq, s11_dB, Zin, P_in , hash_prefix
+            axs[0, 1].grid()
+            axs[0, 1].set_title('Reflection coefficient S11')
+            axs[0, 1].set_xlabel('Frequency f / MHz')
+            axs[0, 1].set_ylabel('Reflection coefficient |S11| (dB)')
+            axs[0, 1].legend()
+            # For polar subplots, calculate NF2FF if the resonance frequency is found
+
+            if len(idx) != 1:
+                print('No resonance frequency found for far-field calculation')
+            else:
+                # Find resonance frequency from s11
+                print("Calculate NF2FF")
+                nf2ff_res_phi0 = nf2ff.CalcNF2FF(Sim_Path, f_res, theta, 0, verbose=0, outfile='3D_Pattern.h5')
+
+                # Create the bottom-left polar subplot (axs[1, 0]) for the xz-plane
+                ax_polar1 = plt.subplot(223, polar=True)
+                E_norm = 20.0 * np.log10(nf2ff_res_phi0.E_norm / np.max(nf2ff_res_phi0.E_norm)) + nf2ff_res_phi0.Dmax
+                ax_polar1.plot(np.deg2rad(theta), 10 ** (np.squeeze(E_norm) / 20), linewidth=2, label='xz-plane')
+                ax_polar1.grid(True)
+                ax_polar1.set_xlabel('theta (deg)')
+                ax_polar1.set_theta_zero_location('N')
+                ax_polar1.set_theta_direction(-1)
+                ax_polar1.legend(loc=3)
+
+
+                ax_polar2 = plt.subplot(224, polar=True)
+                E_norm = 20.0 * np.log10(nf2ff_res_theta90.E_norm / np.max(nf2ff_res_theta90.E_norm)) + nf2ff_res_theta90.Dmax
+                ax_polar2.plot(np.deg2rad(phi), 10 ** (np.squeeze(E_norm) / 20), linewidth=2, label='xy-plane')
+                ax_polar2.grid(True)
+                ax_polar2.set_xlabel('phi (deg)')
+                plt.suptitle('IFA Antenna Pattern\nFrequency: {:.2f} GHz'.format(f_res / 1e9), fontsize=14)
+                ax_polar2.legend(loc=3)
+
+            # Prepare the parameters text with table-like formatting
+            parameters_text = (
+                f"{'IFA Parameters:':<30}\n"
+                f"{'ifa_h:':<20}{ifa_h:>10.3f} mm "
+                f"{'ifa_l:':<20}{ifa_l:>10.3f} mm\n"
+                f"{'ifa_w1:':<20}{ifa_w1:>10.3f} mm "
+                f"{'ifa_w2:':<20}{ifa_w2:>10.3f} mm\n"
+                f"{'ifa_wf:':<20}{ifa_wf:>10.3f} mm "
+                f"{'ifa_fp:':<20}{ifa_fp:>10.3f} mm\n"
+                f"{'ifa_e:':<20}{ifa_e:>10.3f} mm "
+                f"{'ifa_h + ifa_e:':<20}{ifa_h+ifa_e:>10.3f} mm\n\n"
+                f"{'Substrate Properties:':<30}\n"
+                f"{'substrate_epsR:':<20}{substrate_epsR:>10.3f} "
+                f"{'substrate_kappa:':<20}{substrate_kappa:>10.3e} S/m\n\n"
+                f"{'Feeding Setup:':<30}\n"
+                f"{'feed_R:':<20}{feed_R:>10} Ω"
+            )
+            # Add the parameters text to the figure at the bottom
+            fig.text(0.5, 0.01, parameters_text, ha='center', va='bottom', fontsize=12, family='monospace')
+
+            # Adjust layout to prevent overlap with the text
+            plt.tight_layout(rect=[0, 0.2, 1, 0.95])  # Adjust rect to leave space at bottom and top
+
+            # Show all plots
+            plt.figure()
+            plt.show()
+
+        return freq, s11_dB, Zin, P_in , hash_prefix
     return None, None, None, None, None
 #init main function
 def testrun():
@@ -505,25 +548,26 @@ def testrun():
 
     unit = 1e-3
     substrate_width = 21
-    substrate_length = 83.15
+    substrate_length = 40
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 6.
-    ifa_l = 27
+    ifa_h = 10.
+    ifa_l = 31
     ifa_w1 = 1.
     ifa_w2 = 1.
     ifa_wf = 1.
-    ifa_fp = 3.0
+    ifa_fp = 7.0
     ifa_e = 0.5
-    mifa_meander = 3.0
-    mifa_edgedistance = 2.0
+    mifa_meander=3.0
+    mifa_tipdistance=2.0
+    mifa_meander_edge_distance=3.0
     substrate_epsR = 4.5
     feed_R = 50
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
-    min_size = 0.2 # minimum automesh size
+    min_size = 0.3 # minimum automesh size
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
@@ -543,7 +587,8 @@ def testrun():
                                                     ifa_fp=ifa_fp,
                                                     ifa_e=ifa_e,
                                                     mifa_meander=mifa_meander,
-                                                    mifa_edgedistance=mifa_edgedistance,
+                                                    mifa_tipdistance=mifa_tipdistance,
+                                                    mifa_meander_edge_distance=mifa_meander_edge_distance,
                                                     substrate_epsR=substrate_epsR,
                                                     feed_R=feed_R,
                                                     min_freq=min_freq,

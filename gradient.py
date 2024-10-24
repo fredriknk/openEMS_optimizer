@@ -1,4 +1,4 @@
-from ifa_test import ifa_simulation
+from mifa_test import ifa_simulation
 import logging
 import numpy as np
 from scipy.optimize import minimize
@@ -24,7 +24,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     post_proc_only = False
     unit = 1e-3
     substrate_width = 21
-    substrate_length = 83.15
+    substrate_length = 40
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
@@ -34,7 +34,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
-    min_size = 0.2  # Minimum automesh size
+    min_size = 0.3  # Minimum automesh size
     plot = False
 
     try:
@@ -116,22 +116,22 @@ if __name__ == "__main__":
 
     # Fixed parameters
     fixed_params = {
-        'ifa_l': 14.0,  # Initial value
+        'ifa_l': 20,  # Initial value
         'ifa_h': 7.5,  
-        'ifa_fp': 5.5,
-        'ifa_w1': 0.7,
-        'ifa_w2': 0.7,
-        'ifa_wf': 0.7,
+        'ifa_fp': 7,
+        'ifa_w1': 0.75,
+        'ifa_w2': 0.75,
+        'ifa_wf': 0.75,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (10.0, 19.5),
-        'ifa_h': (1.0, 16.0),
-        'ifa_fp': (1.0, 10.0),
+        'ifa_l': (16, 31),
+        'ifa_h': (5., 16.0),
+        'ifa_fp': (1.0, 7),
         'ifa_w1': (0.4, 1.0),
         'ifa_w2': (0.4, 1.0),
-        'ifa_wf': (0.4, 1.0),
+        'ifa_wf': (0.6, 1.5),
     }
 
     # Choose variables to optimize
