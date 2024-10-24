@@ -47,7 +47,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     min_freq = 0.77e9
     center_freq = 0.82e9
     max_freq = 0.87e9
-    min_size = 0.2  # Minimum automesh size
+    min_size = 0.3  # Minimum automesh size
     max_size = 8.0#maximum automesh size
     f0=0.82e9
     fc = 0.5e9
@@ -136,22 +136,22 @@ if __name__ == "__main__":
 
     # Fixed parameters
     fixed_params = {
-        'ifa_l': 20,  # Initial value
-        'ifa_h': 7.5,  
+        'ifa_l': 83,  # Initial value
+        'ifa_h': 14.5,  
         'ifa_fp': 4,
-        'ifa_w1': 1.0,
-        'ifa_w2': 0.5,
-        'ifa_wf': 0.5,
+        'ifa_w1': 1.5,
+        'ifa_w2': 0.95,
+        'ifa_wf': 0.95,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (16, 53),
-        'ifa_h': (7., 16.0),
-        'ifa_fp': (1.0, 5.),
-        'ifa_w1': (0.4, 1.5),
-        'ifa_w2': (0.4, 1.0),
-        'ifa_wf': (0.4, 1.5)
+        'ifa_l': (70, 100),
+        'ifa_h': (14., 18.),
+        'ifa_fp': (1.0, 4.5),
+        'ifa_w1': (0.9, 2.0),
+        'ifa_w2': (0.9, 1.0),
+        'ifa_wf': (0.9, 1.0)
     }
     
     # Choose variables to optimize
