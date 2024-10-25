@@ -56,19 +56,7 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
         # Add the first point offset by the direction
         meshlines[axis].append(startpoint + direction * min_size * 2 / 3)
         # Initialize the current point and size
-        current_point = startpoint - direction * min_size * 1 / 3
-        currentsize = min_size
-        
-        # Generate points from start to center, expanding geometrically
-        while (current_point - center) * (startpoint - center) > 0 and \
-                abs(current_point - center) >= min_size / 2:
-            meshlines[axis].append(current_point)
-            if currentsize < max_size:
-                currentsize *= 2
-                if currentsize > max_size:
-                    currentsize = max_size
-            current_point = meshlines[axis][-1] - direction*currentsize
-        
+        meshlines[axis].append( startpoint - direction * min_size * 1 / 3)
         # Generate mirrored points from center to stop
         inverted = (np.array(meshlines[axis][::-1]) - startpoint) * -1 + stoppoint
         for point in inverted:
@@ -76,9 +64,9 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
         
         # Ensure the distance between two middle points is not larger than max_size
         mid_index = len(meshlines[axis]) // 2
-        if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > max_size:
-            meshlines[axis].insert(mid_index, center)
-        elif abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > length/2:
+        #if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > max_size:
+        #    meshlines[axis].insert(mid_index, center)
+        if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > length/2:
             meshlines[axis].insert(mid_index, center)
 
 def extend_line(start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
@@ -306,7 +294,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             ldfiff_ratio = length_diff /(max_length_mifa*2)
             print(f"ldfiff_ratio: {ldfiff_ratio}")
             if ldfiff_ratio > 0:
-                m_stop = start+np.array([-ifa_w2,0,0])
+                stop = start+np.array([-ifa_w2,0,0])
                 while ldfiff_ratio > 0:
                     print(f"current ldfiff_ratio: {ldfiff_ratio}")
                     if ldfiff_ratio < 1:
@@ -320,29 +308,40 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                         print(f"current_meander too small: {current_meander}")
                         break
                     #first topline
-                    m_start = m_stop+np.array([ifa_w2,0,0])
-                    m_stop = m_start + np.array([-mifa_meander-ifa_w2,-ifa_w2,0])
-                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
-
+                    start = stop+np.array([ifa_w2,0,0])
+                    stop = start + np.array([-mifa_meander-ifa_w2,-ifa_w2,0])
+                    ifa.AddBox(start=start, stop=stop, priority=10)
+                    meshlines = extend_line(start, stop, min_size, max_size)
+                    mesh.AddLine('x', meshlines[0])
+                    mesh.AddLine('y', meshlines[1])
 
                     #meander down
-                    m_start = m_stop + np.array([0,ifa_w2,0])
-                    m_stop = m_start + np.array([ifa_w2,-current_meander*max_length_mifa-ifa_w2,0])
-                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    start = stop + np.array([0,ifa_w2,0])
+                    stop = start + np.array([ifa_w2,-current_meander*max_length_mifa-ifa_w2,0])
+                    ifa.AddBox(start=start, stop=stop, priority=10)
+                    meshlines = extend_line(start, stop, min_size, max_size)
+                    mesh.AddLine('x', meshlines[0])
+                    mesh.AddLine('y', meshlines[1])
 
                     #lower meander sideways
-                    m_start = m_stop+ np.array([0,0,0])
-                    m_stop = m_start + np.array([-mifa_meander-ifa_w2/2,ifa_w2,0])
-                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    start = stop+ np.array([0,0,0])
+                    stop = start + np.array([-mifa_meander-ifa_w2,ifa_w2,0])
+                    ifa.AddBox(start=start, stop=stop, priority=10)
+                    meshlines = extend_line(start, stop, min_size, max_size)
+                    mesh.AddLine('x', meshlines[0])
+                    mesh.AddLine('y', meshlines[1])
 
                     #meander up
-                    m_start = m_stop + np.array([+ifa_w2/2,-ifa_w2,0])
-                    m_stop = m_start + np.array([-ifa_w2,+current_meander*max_length_mifa+ifa_w2,0])
-                    ifa.AddBox(start=m_start, stop=m_stop, priority=10)
+                    start = stop + np.array([+ifa_w2,-ifa_w2,0])
+                    stop = start + np.array([-ifa_w2,+current_meander*max_length_mifa+ifa_w2,0])
+                    ifa.AddBox(start=start, stop=stop, priority=10)
+                    meshlines = extend_line(start, stop, min_size, max_size)
+                    mesh.AddLine('x', meshlines[0])
+                    mesh.AddLine('y', meshlines[1])
 
                 #connect to shorting stub    
                 start = radiating_element_start
-                stop = m_stop+ np.array([ifa_w2,-ifa_w2,0])
+                stop = stop+ np.array([ifa_w2,-ifa_w2,0])
                 ifa.AddBox(start=start, stop=stop, priority=10)
 
     #meshlines = extend_line(start, stop,min_size,max_size)
@@ -595,7 +594,7 @@ def wifi():
 def lte():
     Sim_CSX = 'IFA.xml'
     showCad = True
-    post_proc_only = True
+    post_proc_only = False
 
     unit = 1e-3
     substrate_width = 25
@@ -656,4 +655,4 @@ def lte():
 
 
 if __name__ == "__main__":
-    wifi()
+    lte()
