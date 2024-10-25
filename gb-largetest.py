@@ -47,7 +47,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
-    min_size = 0.5  # Minimum automesh size
+    min_size = 0.3  # Minimum automesh size
     plot = False
 
     try:
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         'ifa_l': 23,  # Initial value
         'ifa_h': 5.5,  
         'ifa_fp': 5,
-        'ifa_w1': 1.5,
+        'ifa_w1': 1,
         'ifa_w2': 1.,
         'ifa_wf': 1,
     }
@@ -162,7 +162,7 @@ if __name__ == "__main__":
             bounds=(bounds[0][0], bounds[0][1]),
             method='bounded',
             args=(variable_names, fixed_params_copy),
-            options={'xatol': (bounds[0][1] - bounds[0][0]) / 100}  # Stop when the interval is smaller than 1/100th the bounds
+            options={'xatol': (bounds[0][1] - bounds[0][0]) / 300}  # Stop when the interval is smaller than 3/100th the bounds
         )
 
         fixed_params[var_name] = result.x

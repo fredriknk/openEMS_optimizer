@@ -1,27 +1,69 @@
 from mifa_test import ifa_simulation
 import logging
 import numpy as np
-from scipy.optimize import minimize, minimize_scalar
+import os
+import pickle
+from scipy.optimize import differential_evolution
 
-# Function to evaluate the antenna performance
+# Function to save the state of the differential evolution
+def save_state(filename, state):
+    with open(filename, 'wb') as f:
+        pickle.dump(state, f)
+    logging.info(f"State saved to {filename}")
+
+# Function to load the state of the differential evolution
+def load_state(filename):
+    if os.path.exists(filename):
+        with open(filename, 'rb') as f:
+            state = pickle.load(f)
+        logging.info(f"State loaded from {filename}")
+        return state
+    return None
+
+# Callback function to save state periodically
+def save_callback(xk, convergence):
+    global result_state, save_filename
+    # Save the current state of the optimization
+    result_state = {'xk': xk, 'convergence': convergence, 'population': optimizer.population}
+    save_state(save_filename, result_state)
+    return False  # Returning False allows the optimization to continue
+
 def evaluation_fun(x, variable_names, fixed_params):
-    # Update the variables to be optimized
+    import logging
+    import os
+    import numpy as np
+    import traceback
+    from time import time
+    starttime = time()
+    # Ensure the logs directory exists
+    os.makedirs('logs', exist_ok=True)
+
+    # Get the root logger
+    logger = logging.getLogger()
+    if not logger.hasHandlers():
+        # Configure logging only if not already configured
+        logging.basicConfig(
+            filename='logs/diffevolution_log.txt',
+            level=logging.INFO,
+            format='%(asctime)s - %(message)s',
+            filemode='a'  # Append mode
+        )
+
+    # Initialize params by copying fixed_params
     params = fixed_params.copy()
-    
+
+    # Update the variables to be optimized
     if len(variable_names) == 1:
         # Ensure x is a scalar
-        if isinstance(x, (list, np.ndarray)):
-            params[variable_names[0]] = x[0]
-        else:
-            params[variable_names[0]] = x
+        params[variable_names[0]] = x if np.isscalar(x) else x[0]
     else:
         # Treat x as a vector
         for i, var_name in enumerate(variable_names):
             params[var_name] = x[i]
 
-    # Debugging: Verify parameter types
+    # Optional: Log parameter types for debugging
     for key, value in params.items():
-        print(f"{key}: {value}, type: {type(value)}")
+        logger.debug(f"{key}: {value}, type: {type(value)}")
 
     # Extract parameters
     ifa_h = params['ifa_h']
@@ -30,51 +72,35 @@ def evaluation_fun(x, variable_names, fixed_params):
     ifa_w1 = params['ifa_w1']
     ifa_w2 = params['ifa_w2']
     ifa_wf = params['ifa_wf']
-
-    # Constants for the simulation
-    Sim_CSX = 'IFA.xml'
-    showCad = False
-    post_proc_only = False
-    unit = 1e-3
-    substrate_width = 21
-    substrate_length = 83
-    substrate_thickness = 1.5
-    gndplane_position = 0
-    substrate_cells = 4
-    ifa_e = 0.5
-    substrate_epsR = 4.5
-    feed_R = 50
-    min_freq = 2.4e9
-    center_freq = 2.45e9
-    max_freq = 2.5e9
-    min_size = 0.5  # Minimum automesh size
-    plot = False
+    center_freq = 2.45e9  # Center frequency for S11 evaluation
+    # Constants for the simulation (as per your original code)
+    # ...
 
     try:
-        freq, s11_dB, Zin, P_in,hash_prefix = ifa_simulation(
-            Sim_CSX=Sim_CSX,
-            showCad=showCad,
-            post_proc_only=post_proc_only,
-            unit=unit,
-            substrate_width=substrate_width,
-            substrate_length=substrate_length,
-            substrate_thickness=substrate_thickness,
-            gndplane_position=gndplane_position,
-            substrate_cells=substrate_cells,
+        freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(
+            Sim_CSX='IFA.xml',
+            showCad=False,
+            post_proc_only=False,
+            unit=1e-3,
+            substrate_width=21,
+            substrate_length=83,
+            substrate_thickness=1.5,
+            gndplane_position=0,
+            substrate_cells=4,
             ifa_h=ifa_h,
             ifa_l=ifa_l,
             ifa_fp=ifa_fp,
             ifa_w1=ifa_w1,
             ifa_w2=ifa_w2,
             ifa_wf=ifa_wf,
-            ifa_e=ifa_e,
-            substrate_epsR=substrate_epsR,
-            feed_R=feed_R,
-            min_freq=min_freq,
+            ifa_e=0.5,
+            substrate_epsR=4.5,
+            feed_R=50,
+            min_freq=2.4e9,
             center_freq=center_freq,
-            max_freq=max_freq,
-            plot=plot,
-            min_size=min_size
+            max_freq=2.5e9,
+            plot=False,
+            min_size=0.3
         )
 
         # Get the S11 value at the center frequency
@@ -110,28 +136,49 @@ def evaluation_fun(x, variable_names, fixed_params):
         #specify the bandwidth:
         if first_crossing is not -1 or last_crossing is not -1:
             bandwidth = last_crossing - first_crossing  
-        
+        total_seconds = time() - starttime
         # Log parameters and objective function values
-        res = 4
-        logging.info(f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, ifa_w1: {ifa_w1:.3f},ifa_w1: {ifa_w2:.3f},ifa_wf: {ifa_wf:.3f}, S11 at cf: {s11_value:.4f}, Imp:{impedance:.1f}R {reactance:.1f}z, Res f:{f_res/1e9:.3f} GHz, S11 at res:{s_11_min:.3f}, BW1:{first_crossing/1e9:.2f} GHz, BW2:{last_crossing/1e9:.2f} GHz, BW = {bandwidth/1e6:.1f} MHz - id {hash_prefix}")
-        # Return the magnitude (since we want to minimize it)
-        return  {"s11": s11_value ,"freqdiff":(center_freq-f_res),"impedance":impedance,"reactance":reactance,"res_freq":f_res,"s11_res":s_11_min,"bw1":first_crossing,"bw2":last_crossing,"bandwidth":bandwidth}
+        log_message = (
+            f"total seconds: {total_seconds:.2f}, "
+            f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, "
+            f"ifa_w1: {ifa_w1:.3f}, ifa_w2: {ifa_w2:.3f}, ifa_wf: {ifa_wf:.3f}, "
+            f"S11 at cf: {s11_value:.4f}, Imp: {impedance:.1f}R {reactance:.1f}z, "
+            f"Res f: {f_res/1e9:.3f} GHz, S11 at res: {s_11_min:.3f}, "
+            f"BW1: {first_crossing/1e9:.2f} GHz, BW2: {last_crossing/1e9:.2f} GHz, "
+            f"BW = {bandwidth/1e6:.1f} MHz - id {hash_prefix}"
+        )
+        logger.info(log_message)
+
+        # Return the objective function value (since we want to minimize it)
+        return s11_value
 
     except Exception as e:
-        logging.info(f"Exception during simulation: {e}.")
-        return np.inf  # Return a high value to indicate failure
+        logger.error(f"Exception in evaluation_fun: {e}")
+        logger.error(traceback.format_exc())
+        return np.inf
+
 
 
 if __name__ == "__main__":
-    # Setup file logging
-    logging.basicConfig(filename='logs\\gradient_bisect_largetest_frequency_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+    # Ensure the logs directory exists
+    os.makedirs('logs', exist_ok=True)
+    os.makedirs("savefiles", exist_ok=True)
+    save_filename = 'savefiles/diffevolution_state.pkl'
+
+    # Configure logging once in the main process
+    logging.basicConfig(
+        filename='logs/diffevolution_log.txt',
+        level=logging.INFO,
+        format='%(asctime)s - %(message)s',
+        filemode='a'  # Append mode
+    )
 
     # Fixed parameters
     fixed_params = {
         'ifa_l': 23,  # Initial value
         'ifa_h': 5.5,  
         'ifa_fp': 5,
-        'ifa_w1': 1.5,
+        'ifa_w1': 1,
         'ifa_w2': 1.,
         'ifa_wf': 1,
     }
@@ -145,43 +192,58 @@ if __name__ == "__main__":
         'ifa_w2': (0.4, 1.5),
         'ifa_wf': (0.4, 1.5)
     }
+
+    # Variables to optimize
+    variable_names = ['ifa_l', 'ifa_w1']
+    bounds = [variable_bounds[var_name] for var_name in variable_names]
     
-    # Choose variables to optimize
-    optimization_strategy = {1:{"feature":"ifa_l",
-                                "method":"bisect",
-                                "tol":1e-3,
-                                 },
-                             2: {"feature": "ifa_w1",
-                                 "method": "bisect",
-                                 "tol": 1e-3,
-                                 }
-                             }
+    logging.info(f"start diff evolution, bounds: {bounds}, fixed_params: {fixed_params}")
+    
+     # Check for saved state
+    result_state = load_state(save_filename)
+    init_pop = None
 
-                                      
-    variable_names = [['ifa_l',"freqdiff"], 'ifa_w1', 'ifa_l','ifa_w2','ifa_wf','ifa_fp','ifa_h']  # List variables you want to optimize
-    bcplist = variable_names
+    # If a saved state exists, extract the initial population
+    if result_state:
+        init_pop = result_state.get('population')
 
-    for var_name in bcplist:
-        logging.info(f"Optimizing {var_name} within bounds: {variable_bounds[var_name]}")
-        variable_names = [var_name]
-        bounds = [variable_bounds[var_name]]
-        fixed_params_copy = fixed_params.copy()
-        print(f"bounds: {bounds}")
-        #global optimization method
+    # Run differential evolution with the initial population if available
+    optimizer = differential_evolution(
+        evaluation_fun,
+        bounds,
+        args=(variable_names, fixed_params),
+        strategy='best1bin',
+        maxiter=1000,
+        popsize=15,
+        tol=0.01,
+        mutation=(0.5, 1),
+        recombination=0.7,
+        disp=True,
+        polish=True,
+        callback=save_callback,
+        workers=6,
+        init=init_pop if init_pop is not None else 'random'
+    )
 
+    # After completion, save the final state
+    result_state = {'xk': optimizer.x, 'convergence': optimizer.fun, 'population': optimizer.population}
+    save_state(save_filename, result_state)
 
+    
+    
+    # Update fixed_params with the optimized values
+    for i, var_name in enumerate(variable_names):
+        fixed_params[var_name] = optimizer.x[i]
+        logging.info(f"Optimized {var_name}: {fixed_params[var_name]}")
 
-        fixed_params[var_name] =
-        logging.info(f"Optimized {var_name}: {fixed_params[var_name]}, Objective function value: {result.fun}")
-
-    # Log the final optimized parameters
-    logging.info("Final optimized parameters:")
-    for var_name in bcplist:
+    # Log the final result
+    logging.info("Optimized parameters:")
+    for var_name in variable_names:
         logging.info(f"{var_name}: {fixed_params[var_name]}")
-    logging.info(f"Final objective function value: {result.fun}")
+    logging.info(f"Objective function value: {optimizer.fun}")
 
     # Print the result to the console
     print("Optimization Result:")
-    for var_name in bcplist:
+    for var_name in variable_names:
         print(f"{var_name}: {fixed_params[var_name]}")
-    print(f"Objective function value (S11 at center frequency): {result.fun}")
+    print(f"Objective function value (S11 at center frequency): {optimizer.fun}")

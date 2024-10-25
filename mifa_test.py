@@ -537,8 +537,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 #init main function
 def wifi():
     Sim_CSX = 'IFA.xml'
-    showCad = True
-    post_proc_only = True
+    showCad = False
+    post_proc_only = False
 
     unit = 1e-3
     substrate_width = 21
@@ -547,7 +547,7 @@ def wifi():
     gndplane_position = 0
     substrate_cells = 4
     ifa_h = 5.500
-    ifa_l = 35#22.805
+    ifa_l = 22.805
     ifa_w1 = 0.4
     ifa_w2 = 1
     ifa_wf = 1
@@ -603,14 +603,14 @@ def lte():
     gndplane_position = 0
     substrate_cells = 4
     ifa_h = 12.5
-    ifa_l = 90
+    ifa_l = 120
     ifa_w1 = 1.5
-    ifa_w2 = 0.7
-    ifa_wf = 0.6
+    ifa_w2 = 1
+    ifa_wf = 1
     ifa_fp = 4.75
     ifa_e = 0.5
-    mifa_meander=1.1
-    mifa_tipdistance=2
+    mifa_meander=2
+    mifa_tipdistance=3
     mifa_meander_edge_distance=3
     substrate_epsR = 4.5
     feed_R = 50
@@ -619,6 +619,7 @@ def lte():
     max_freq = 0.87e9
     f0 = 0.82e9
     fc = 0.5e9
+    meander_direction = "y",
     min_size = 0.4 # minimum automesh size
     plot = True
 
