@@ -113,9 +113,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    center_freq=2.45e9,
                    max_freq=2.5e9,
                    min_size=0.2,#minimum automesh size
-                   max_size = 4.0,#maximum automesh size
+                   max_size=4.0,#maximum automesh size
                    f0=2.45e9,  # center frequency
-                   fc = 1.0e9,  # 20 dB corner frequency
+                   fc=1.0e9,  # 20 dB corner frequency
                    max_timesteps=600000,
                    plot=True):
     #############################################################################
@@ -407,7 +407,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             traceback.print_exc()
     if os.path.exists(sim_file):
         # Post-processing & plotting
-        freq = np.linspace(max(1e9, f0 - fc), f0 + fc, 501)
+        freq = np.linspace(max(0, f0 - fc), f0 + fc, 501)
         port.CalcPort(Sim_Path, freq)
 
         Zin = port.uf_tot / port.if_tot
@@ -603,7 +603,7 @@ def lte():
     gndplane_position = 0
     substrate_cells = 4
     ifa_h = 12.5
-    ifa_l = 50
+    ifa_l = 90
     ifa_w1 = 1.5
     ifa_w2 = 0.7
     ifa_wf = 0.6

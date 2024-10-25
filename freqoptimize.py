@@ -147,15 +147,16 @@ if __name__ == "__main__":
     }
     
     # Choose variables to optimize
-    optimization_strategy = {"ifa_l":{"method":"bisect",
-                                      "initial_guess":23,
-                                      "parameters":{(16, 31)},
-                                      "tol":1e-3,
-                                    },
-                            "ifa_w1":{"method":"bisect",
-                                      "parameters":{(16, 31)}
-                                    }
-                            }
+    optimization_strategy = {1:{"feature":"ifa_l",
+                                "method":"bisect",
+                                "tol":1e-3,
+                                 },
+                             2: {"feature": "ifa_w1",
+                                 "method": "bisect",
+                                 "tol": 1e-3,
+                                 }
+                             }
+
                                       
     variable_names = [['ifa_l',"freqdiff"], 'ifa_w1', 'ifa_l','ifa_w2','ifa_wf','ifa_fp','ifa_h']  # List variables you want to optimize
     bcplist = variable_names
@@ -166,9 +167,11 @@ if __name__ == "__main__":
         bounds = [variable_bounds[var_name]]
         fixed_params_copy = fixed_params.copy()
         print(f"bounds: {bounds}")
-        
+        #global optimization method
 
-        fixed_params[var_name] = result.x
+
+
+        fixed_params[var_name] =
         logging.info(f"Optimized {var_name}: {fixed_params[var_name]}, Objective function value: {result.fun}")
 
     # Log the final optimized parameters
