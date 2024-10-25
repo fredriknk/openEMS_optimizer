@@ -594,7 +594,7 @@ def wifi():
 def lte():
     Sim_CSX = 'IFA.xml'
     showCad = True
-    post_proc_only = False
+    post_proc_only = True
 
     unit = 1e-3
     substrate_width = 25
@@ -602,15 +602,15 @@ def lte():
     substrate_thickness = 1.4
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 12.5
-    ifa_l = 90
+    ifa_h = 20
+    ifa_l = 170
     ifa_w1 = 1.5
-    ifa_w2 = 0.7
-    ifa_wf = 0.6
+    ifa_w2 = 1
+    ifa_wf = 1
     ifa_fp = 4.75
     ifa_e = 0.5
-    mifa_meander=1.1
-    mifa_tipdistance=2
+    mifa_meander=2
+    mifa_tipdistance=3
     mifa_meander_edge_distance=3
     substrate_epsR = 4.5
     feed_R = 50
