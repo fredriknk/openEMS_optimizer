@@ -5,11 +5,13 @@ import os
 import pickle
 from scipy.optimize import differential_evolution
 
+
 # Function to save the state of the differential evolution
 def save_state(filename, state):
     with open(filename, 'wb') as f:
         pickle.dump(state, f)
     logging.info(f"State saved to {filename}")
+
 
 # Function to load the state of the differential evolution
 def load_state(filename):
@@ -20,6 +22,7 @@ def load_state(filename):
         return state
     return None
 
+
 # Callback function to save state periodically
 def save_callback(xk, convergence):
     global result_state, save_filename
@@ -27,6 +30,7 @@ def save_callback(xk, convergence):
     result_state = {'xk': xk, 'convergence': convergence, 'population': optimizer.population}
     save_state(save_filename, result_state)
     return False  # Returning False allows the optimization to continue
+
 
 def evaluation_fun(x, variable_names, fixed_params):
     import logging
@@ -106,14 +110,14 @@ def evaluation_fun(x, variable_names, fixed_params):
         # Get the S11 value at the center frequency
         idx = np.argmin(np.abs(freq - center_freq))
         s11_value = s11_dB[idx]
-        #round value to 2 decimal places
-        
+        # round value to 2 decimal places
+
         f_res_ind = np.argmin(s11_dB)
         f_res = freq[f_res_ind]
         s_11_min = s11_dB[f_res_ind]
-        #bandwidth at xDB
+        # bandwidth at xDB
         minS11 = -6
-        
+
         first_crossing = -1
         last_crossing = -1
         if f_res_ind != 0 and s_11_min < minS11:
@@ -128,14 +132,14 @@ def evaluation_fun(x, variable_names, fixed_params):
                 if s11_dB[i] > minS11:
                     last_crossing = freq[i]
                     break
-        
+
         impedance = np.real(Zin[idx])
         reactance = np.imag(Zin[idx])
-        
+
         bandwidth = -1
-        #specify the bandwidth:
+        # specify the bandwidth:
         if first_crossing is not -1 or last_crossing is not -1:
-            bandwidth = last_crossing - first_crossing  
+            bandwidth = last_crossing - first_crossing
         total_seconds = time() - starttime
         # Log parameters and objective function values
         log_message = (
@@ -143,9 +147,9 @@ def evaluation_fun(x, variable_names, fixed_params):
             f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, "
             f"ifa_w1: {ifa_w1:.3f}, ifa_w2: {ifa_w2:.3f}, ifa_wf: {ifa_wf:.3f}, "
             f"S11 at cf: {s11_value:.4f}, Imp: {impedance:.1f}R {reactance:.1f}z, "
-            f"Res f: {f_res/1e9:.3f} GHz, S11 at res: {s_11_min:.3f}, "
-            f"BW1: {first_crossing/1e9:.2f} GHz, BW2: {last_crossing/1e9:.2f} GHz, "
-            f"BW = {bandwidth/1e6:.1f} MHz - id {hash_prefix}"
+            f"Res f: {f_res / 1e9:.3f} GHz, S11 at res: {s_11_min:.3f}, "
+            f"BW1: {first_crossing / 1e9:.2f} GHz, BW2: {last_crossing / 1e9:.2f} GHz, "
+            f"BW = {bandwidth / 1e6:.1f} MHz - id {hash_prefix}"
         )
         logger.info(log_message)
 
@@ -156,7 +160,6 @@ def evaluation_fun(x, variable_names, fixed_params):
         logger.error(f"Exception in evaluation_fun: {e}")
         logger.error(traceback.format_exc())
         return np.inf
-
 
 
 if __name__ == "__main__":
@@ -176,7 +179,7 @@ if __name__ == "__main__":
     # Fixed parameters
     fixed_params = {
         'ifa_l': 23,  # Initial value
-        'ifa_h': 5.5,  
+        'ifa_h': 5.5,
         'ifa_fp': 5,
         'ifa_w1': 1,
         'ifa_w2': 1.,
@@ -196,10 +199,10 @@ if __name__ == "__main__":
     # Variables to optimize
     variable_names = [ 'ifa_w1', 'ifa_l','ifa_w2','ifa_wf','ifa_fp','ifa_h']  # List variables you want to optimize
     bounds = [variable_bounds[var_name] for var_name in variable_names]
-    
+
     logging.info(f"start diff evolution, bounds: {bounds}, fixed_params: {fixed_params}")
-    
-     # Check for saved state
+
+    # Check for saved state
     result_state = load_state(save_filename)
     init_pop = None
 
@@ -228,8 +231,6 @@ if __name__ == "__main__":
     result_state = {'xk': optimizer.x, 'convergence': optimizer.fun, 'population': optimizer.population}
     save_state(save_filename, result_state)
 
-    
-    
     # Update fixed_params with the optimized values
     for i, var_name in enumerate(variable_names):
         fixed_params[var_name] = optimizer.x[i]
