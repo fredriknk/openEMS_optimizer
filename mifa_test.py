@@ -550,21 +550,12 @@ def wifi():
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
-<<<<<<< HEAD
     ifa_h = 6.965
     ifa_l = 21.019
     ifa_w1 = 2.961
     ifa_w2 = 1.235
     ifa_wf = 0.442
     ifa_fp = 4.086
-=======
-    ifa_h = 6.980
-    ifa_l = 21.021
-    ifa_w1 = 2.929
-    ifa_w2 = 1.214
-    ifa_wf = 0.444
-    ifa_fp = 4.069
->>>>>>> d460536ecb4bbcaeb6d6067145cccd7cd585ae01
     ifa_e = 0.5
     mifa_meander=2
     mifa_tipdistance=3.0
