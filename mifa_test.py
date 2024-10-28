@@ -117,6 +117,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    f0=2.45e9,  # center frequency
                    fc=1.0e9,  # 20 dB corner frequency
                    max_timesteps=600000,
+                   override_min_global_grid=None,
                    plot=True):
     #############################################################################
     #                substrate_width
@@ -168,6 +169,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         min_size,
         max_size,
         max_timesteps,
+        override_min_global_grid,
         f0,
         fc,
     )
@@ -360,6 +362,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     #Finalize the mesh
     # Generate a smooth mesh with max. cell size: lambda_min / 20
     mesh_res = C0 / (f0 + fc) / unit / 20
+    if override_min_global_grid is not None:
+        mesh_res=override_min_global_grid
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
 
     # Add the nf2ff recording box
@@ -542,16 +546,16 @@ def wifi():
 
     unit = 1e-3
     substrate_width = 21
-    substrate_length = 40
+    substrate_length = 83
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
-    ifa_h = 5.500
-    ifa_l = 22.805
-    ifa_w1 = 0.4
-    ifa_w2 = 1
-    ifa_wf = 1
-    ifa_fp = 5.000
+    ifa_h = 6.965
+    ifa_l = 21.019
+    ifa_w1 = 2.961
+    ifa_w2 = 1.235
+    ifa_wf = 0.442
+    ifa_fp = 4.086
     ifa_e = 0.5
     mifa_meander=2
     mifa_tipdistance=3.0
@@ -561,7 +565,9 @@ def wifi():
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
-    min_size = 0.3 # minimum automesh size
+    min_size = 0.2 # minimum automesh size
+    override_min_global_grid = 2 #none if not override
+    max_timesteps = 800000
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
@@ -589,6 +595,8 @@ def wifi():
                                                     center_freq=center_freq,
                                                     max_freq=max_freq,
                                                     min_size=min_size,
+                                                    override_min_global_grid=override_min_global_grid,
+                                                    max_timesteps=max_timesteps,
                                                     plot=plot)
 
 def lte():
@@ -622,6 +630,7 @@ def lte():
     meander_direction = "y",
     min_size = 0.4 # minimum automesh size
     plot = True
+    max_timesteps = 800000
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
                                                     showCad=showCad,
@@ -650,10 +659,11 @@ def lte():
                                                     min_size=min_size,
                                                     plot=plot,
                                                     f0=f0,
+                                                    max_timesteps=max_timesteps,
                                                     fc=fc)
 
 
 
 
 if __name__ == "__main__":
-    lte()
+    wifi()

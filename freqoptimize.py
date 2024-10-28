@@ -185,16 +185,16 @@ if __name__ == "__main__":
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (16, 31),
-        'ifa_h': (5., 16.0),
-        'ifa_fp': (1.0, 6),
-        'ifa_w1': (0.35, 3),
+        'ifa_l': (19, 24),
+        'ifa_h': (5., 7.0),
+        'ifa_fp': (4.0, 6),
+        'ifa_w1': (0.5, 3),
         'ifa_w2': (0.4, 1.5),
         'ifa_wf': (0.4, 1.5)
     }
 
     # Variables to optimize
-    variable_names = ['ifa_l', 'ifa_w1']
+    variable_names = [ 'ifa_w1', 'ifa_l','ifa_w2','ifa_wf','ifa_fp','ifa_h']  # List variables you want to optimize
     bounds = [variable_bounds[var_name] for var_name in variable_names]
     
     logging.info(f"start diff evolution, bounds: {bounds}, fixed_params: {fixed_params}")
@@ -214,14 +214,13 @@ if __name__ == "__main__":
         args=(variable_names, fixed_params),
         strategy='best1bin',
         maxiter=1000,
-        popsize=15,
+        popsize=5,
         tol=0.01,
         mutation=(0.5, 1),
         recombination=0.7,
         disp=True,
         polish=True,
-        callback=save_callback,
-        workers=6,
+        workers=4,
         init=init_pop if init_pop is not None else 'random'
     )
 
