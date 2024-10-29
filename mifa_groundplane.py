@@ -395,9 +395,31 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     mesh_res = C0 / (f0 + fc) / unit / 20
     if override_min_global_grid is not None:
         mesh_res=override_min_global_grid
+    def cleanup_mesh(meshlines,min_size):
+        print(f"meshlines at start: {mesh.GetLines('x')}")
+        for axis in ['x', 'y', 'z']:
+            lines = mesh.GetLines(axis)
+            print(f"meshlines {axis} before filtering: {lines}")
 
+            # Sort lines to process them in order
+            lines.sort()
+
+            # Initialize filtered lines with the first line
+            filtered_lines = [lines[0]]
+
+            # Iterate over the remaining lines
+            for l in lines[1:]:
+                # Compare with the last line added to filtered_lines
+                if abs(l - filtered_lines[-1]) >= min_size / 4:
+                    filtered_lines.append(l)
+                else:
+                    # Optional: print debug information
+                    print(f"Removing line {l} on {axis}-axis; too close to {filtered_lines[-1]} (distance {abs(l - filtered_lines[-1])})")
+
+            mesh.SetLines(axis, filtered_lines)
+            print(f"meshlines {axis} after filtering: {mesh.GetLines(axis)}")
+            
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
-
     # Add the nf2ff recording box
     nf2ff = FDTD.CreateNF2FFBox()
 
@@ -616,7 +638,7 @@ def bt_groundplane():
     gndplane_position = -0.36
     substrate_cells = 4
     ifa_h = 6.072
-    ifa_l = 18
+    ifa_l = 17.5
     ifa_w1 = 0.613
     ifa_w2 = 0.4720
     ifa_wf = 0.425
@@ -630,9 +652,9 @@ def bt_groundplane():
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
-    min_size = 0.2 # minimum automesh size
+    min_size = 0.201 # minimum automesh size
     override_min_global_grid = None #none if not override
-    max_timesteps = 800000
+    max_timesteps = 300000
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
