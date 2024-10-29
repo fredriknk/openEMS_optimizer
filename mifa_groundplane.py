@@ -14,7 +14,8 @@ Tested with
 from dotenv import load_dotenv
 import os
 load_dotenv('.env')
-root = rootdir = os.getenv('rootdir')
+root = os.getenv('rootdir')
+csxcad_location= os.getenv('csxcad_location')
 os.add_dll_directory(root)
 
 base_path=os.path.abspath(f'runs')
@@ -417,12 +418,12 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Show the structure
     if showCad:
-        from CSXCAD import AppCSXCAD_BIN
         print("showing cad")
         print(f"root location: {root}")
-        print(f"csxcad location{AppCSXCAD_BIN}")
+
+        print(f"csxcad location{csxcad_location}")
         print(f"csxfile location {CSX_file}")
-        os.system( AppCSXCAD_BIN + ' "{}"'.format(CSX_file))
+        os.system( csxcad_location + ' "{}"'.format(CSX_file))
 
     sim_file = os.path.join(Sim_Path, 'complete_run.flag')
 
@@ -615,7 +616,7 @@ def bt_groundplane():
     gndplane_position = -0.36
     substrate_cells = 4
     ifa_h = 6.072
-    ifa_l = 20
+    ifa_l = 18
     ifa_w1 = 0.613
     ifa_w2 = 0.4720
     ifa_wf = 0.425
