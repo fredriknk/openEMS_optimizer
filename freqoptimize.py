@@ -1,4 +1,4 @@
-from mifa_test import ifa_simulation
+from mifa_groundplane import ifa_simulation
 import logging
 import numpy as np
 import os

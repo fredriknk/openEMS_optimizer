@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-IFA Antenna Simulation using openEMS and Python
+IFA/MIFA Antenna Simulation using openEMS and Python
 
 Converted from MATLAB code
 
 Tested with
- - python 3.x
+ - python 3.1x
  - openEMS v0.0.34+
 
 """
@@ -229,18 +229,18 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     via_diameter=0.3
     if gndplane_position != 0:
         print(f"offset groundplane, add vias")
-        feedpoint = 0 #set feedpoint to groundplane edge
-        short_circuit_stub = via_diameter*2
+        feedpoint = -via_diameter #set feedpoint to groundplane edge
+        short_circuit_stub = via_diameter
     else:
         feedpoint = ifa_wf
         short_circuit_stub = 0
     # Feed element
     start = np.array([0, feedpoint, 0]) + tl
-    stop = start + np.array([ifa_wf, ifa_h - ifa_w2, 0])
+    stop = start + np.array([ifa_wf, ifa_h - feedpoint, 0])
     ifa.AddBox(start=start, stop=stop, priority=10)
     meshlines = extend_line(start, stop,min_size,max_size)
-    mesh.AddLine('x',meshlines[0] )
-    mesh.AddLine('y', meshlines[1])
+    #mesh.AddLine('x',meshlines[0] )
+    #mesh.AddLine('y', meshlines[1])
 
     # Short circuit stub
     start = np.array([-ifa_fp, -short_circuit_stub, 0]) + tl
@@ -248,16 +248,21 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     ifa.AddBox(start=start, stop=stop, priority=10)
 
     meshlines = extend_line(start, stop,min_size,max_size)
-    mesh.AddLine('x',meshlines[0] )
-    mesh.AddLine('y', meshlines[1])
+    #mesh.AddLine('x',meshlines[0] )
+    #mesh.AddLine('y', meshlines[1])
 
     if gndplane_position != 0:
-        start =start+np.array([+ifa_w1/2,+via_diameter,0])
+        #Add Via to groundplane
+        start =start+np.array([+ifa_w1/2,+via_diameter/2,0])
         stop = start+np.array([0,0,gndplane_position])
-        ifa.AddCylinder(start,stop,via_diameter/2)
+        ifa.AddCylinder(start,stop,via_diameter/2,priority=10)
 
-        start = stop+np.array()
-        meshlines = extend_line(via_start, via_stop,min_size,max_size)
+        start = stop+np.array([-via_diameter/2,+via_diameter/2,0])
+        stop = start + np.array([via_diameter, via_diameter,-gndplane_position])
+        meshlines = extend_line(start, stop,min_size,max_size)
+        mesh.AddLine('x', meshlines[0])
+        mesh.AddLine('y', meshlines[1])
+        mesh.AddLine('z', meshlines[2])
 
     # Radiating element
     if ifa_l < substrate_width-2*ifa_e:
@@ -301,8 +306,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             stop = start + np.array([-ifa_w2, -max_edgelength_tip-ifa_w2, 0])
             ifa.AddBox(start=start, stop=stop, priority=10)
             meshlines = extend_line(start, stop,min_size,max_size)
-            mesh.AddLine('x',meshlines[0] )
-            mesh.AddLine('y', meshlines[1])
+            #mesh.AddLine('x',meshlines[0] )
+            #mesh.AddLine('y', meshlines[1])
             length_diff -= max_edgelength_tip
             print("Adding tip element{max_edgelength_tip}")
 
@@ -360,9 +365,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                 stop = stop+ np.array([ifa_w2,-ifa_w2,0])
                 ifa.AddBox(start=start, stop=stop, priority=10)
 
-    #meshlines = extend_line(start, stop,min_size,max_size)
-    #mesh.AddLine('x',meshlines[0] )
-    #mesh.AddLine('y', meshlines[1])
+    meshlines = extend_line(start, stop,min_size,max_size)
+    mesh.AddLine('x',meshlines[0] )
+    mesh.AddLine('y', meshlines[1])
 
     if gndplane_position != 0:
         feed_direction = 'z'
@@ -375,8 +380,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     port = FDTD.AddLumpedPort(1, feed_R, start, stop, feed_direction, 1.0, priority=5)
     meshlines = extend_line(start, stop, min_size, max_size)
     if gndplane_position != 0:
-        mesh.AddLine('y',meshlines[0] )
-        mesh.AddLine('z', meshlines[2])
+        mesh.AddLine('x',meshlines[0] )
+        mesh.AddLine('y', meshlines[1])
         mesh.AddLine('z', stop[2])
     else:
         mesh.AddLine('x',meshlines[0] )
@@ -387,6 +392,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     mesh_res = C0 / (f0 + fc) / unit / 20
     if override_min_global_grid is not None:
         mesh_res=override_min_global_grid
+
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
 
     # Add the nf2ff recording box
@@ -593,6 +599,39 @@ def wifi():
     max_timesteps = 800000
     plot = True
 
+    #freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
+
+def bt_groundplane():
+    Sim_CSX = 'IFA.xml'
+    showCad = True
+    post_proc_only = False
+
+    unit = 1e-3
+    substrate_width = 21
+    substrate_length = 83.1
+    substrate_thickness = 1.5
+    gndplane_position = -0.36
+    substrate_cells = 4
+    ifa_h = 6.072
+    ifa_l = 20
+    ifa_w1 = 0.613
+    ifa_w2 = 0.4720
+    ifa_wf = 0.425
+    ifa_fp = 1.713
+    ifa_e = 0.5
+    mifa_meander=2
+    mifa_tipdistance=3.0
+    mifa_meander_edge_distance=3.0
+    substrate_epsR = 4.5
+    feed_R = 50
+    min_freq = 2.4e9
+    center_freq = 2.45e9
+    max_freq = 2.5e9
+    min_size = 0.2 # minimum automesh size
+    override_min_global_grid = None #none if not override
+    max_timesteps = 800000
+    plot = True
+
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
                                                     showCad=showCad,
                                                     post_proc_only=post_proc_only,
@@ -622,20 +661,21 @@ def wifi():
                                                     max_timesteps=max_timesteps,
                                                     plot=plot)
 
-def wifi_short():
+
+def wifi_groundplane():
     Sim_CSX = 'IFA.xml'
     showCad = True
-    post_proc_only = True
+    post_proc_only = False
 
     unit = 1e-3
     substrate_width = 21
     substrate_length = 40
     substrate_thickness = 1.5
-    gndplane_position = -0.5
+    gndplane_position = -0.36
     substrate_cells = 4
     ifa_h = 5.500
     ifa_l = 21
-    ifa_w1 = 0.4
+    ifa_w1 = 0.401
     ifa_w2 = 1
     ifa_wf = 1
     ifa_fp = 5.000
@@ -748,4 +788,4 @@ def lte():
 
 
 if __name__ == "__main__":
-    wifi_short()
+    bt_groundplane()
