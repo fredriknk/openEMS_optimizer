@@ -1,4 +1,4 @@
-from mifa_groundplane import ifa_simulation
+from mifa import ifa_simulation
 import logging
 import numpy as np
 import os
@@ -41,13 +41,43 @@ def evaluation_fun(x, variable_names, fixed_params):
     starttime = time()
     # Ensure the logs directory exists
     os.makedirs('logs', exist_ok=True)
-
+    
+    Sim_CSX = 'IFA.xml'
+    showCad = False
+    post_proc_only = False
+    unit = 1e-3
+    substrate_width = 21
+    substrate_length = 30
+    substrate_thickness = 1.5
+    gndplane_position = -0.36
+    substrate_cells = 4
+    ifa_h = 5.500
+    ifa_l = 23
+    ifa_w1 = 1
+    ifa_w2 = 1
+    ifa_wf = 1
+    ifa_fp = 5.000
+    ifa_e = 0.5
+    mifa_meander=2
+    mifa_tipdistance=2.0
+    mifa_meander_edge_distance=2.0
+    substrate_epsR = 4.5
+    feed_R = 50
+    min_freq = 2.4e9
+    center_freq = 2.45e9
+    max_freq = 2.5e9
+    min_size = 0.2 # minimum automesh size
+    override_min_global_grid = 1.2 #none if not override
+    max_timesteps = 600000
+    plot = False
+    cleanup = False
+    
     # Get the root logger
     logger = logging.getLogger()
     if not logger.hasHandlers():
         # Configure logging only if not already configured
         logging.basicConfig(
-            filename='logs/diffevolution_log.txt',
+            filename='logs/diffevolution_log_new.txt',
             level=logging.INFO,
             format='%(asctime)s - %(message)s',
             filemode='a'  # Append mode
@@ -81,32 +111,35 @@ def evaluation_fun(x, variable_names, fixed_params):
     # ...
 
     try:
-        freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(
-            Sim_CSX='IFA.xml',
-            showCad=False,
-            post_proc_only=False,
-            unit=1e-3,
-            substrate_width=21,
-            substrate_length=83,
-            substrate_thickness=1.5,
-            gndplane_position=0,
-            substrate_cells=4,
-            ifa_h=ifa_h,
-            ifa_l=ifa_l,
-            ifa_fp=ifa_fp,
-            ifa_w1=ifa_w1,
-            ifa_w2=ifa_w2,
-            ifa_wf=ifa_wf,
-            ifa_e=0.5,
-            substrate_epsR=4.5,
-            feed_R=50,
-            min_freq=2.4e9,
-            center_freq=center_freq,
-            max_freq=2.5e9,
-            plot=False,
-            min_size=0.3
-        )
-
+        freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
+                                                showCad=showCad,
+                                                post_proc_only=post_proc_only,
+                                                unit=post_proc_only,
+                                                substrate_width=substrate_width,
+                                                substrate_length=substrate_length,
+                                                substrate_thickness=substrate_thickness,
+                                                gndplane_position=gndplane_position,
+                                                substrate_cells=substrate_cells,
+                                                ifa_h=ifa_h,
+                                                ifa_l=ifa_l,
+                                                ifa_w1=ifa_w1,
+                                                ifa_w2=ifa_w2,
+                                                ifa_wf=ifa_wf,
+                                                ifa_fp=ifa_fp,
+                                                ifa_e=ifa_e,
+                                                mifa_meander=mifa_meander,
+                                                mifa_tipdistance=mifa_tipdistance,
+                                                mifa_meander_edge_distance=mifa_meander_edge_distance,
+                                                substrate_epsR=substrate_epsR,
+                                                feed_R=feed_R,
+                                                min_freq=min_freq,
+                                                center_freq=center_freq,
+                                                max_freq=max_freq,
+                                                min_size=min_size,
+                                                override_min_global_grid=override_min_global_grid,
+                                                max_timesteps=max_timesteps,
+                                                plot=plot,
+                                                delete_simulation_files=cleanup)
         # Get the S11 value at the center frequency
         idx = np.argmin(np.abs(freq - center_freq))
         s11_value = s11_dB[idx]
@@ -170,7 +203,7 @@ if __name__ == "__main__":
 
     # Configure logging once in the main process
     logging.basicConfig(
-        filename='logs/diffevolution_log.txt',
+        filename='logs/diffevolution_log_new.txt',
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         filemode='a'  # Append mode
@@ -188,9 +221,9 @@ if __name__ == "__main__":
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (19, 24),
-        'ifa_h': (5., 7.0),
-        'ifa_fp': (4.0, 6),
+        'ifa_l': (17, 30),
+        'ifa_h': (4., 10.0),
+        'ifa_fp': (4.0, 7),
         'ifa_w1': (0.5, 3),
         'ifa_w2': (0.4, 1.5),
         'ifa_wf': (0.4, 1.5)
@@ -223,7 +256,7 @@ if __name__ == "__main__":
         recombination=0.7,
         disp=True,
         polish=True,
-        workers=4,
+        workers=3,
         init=init_pop if init_pop is not None else 'random'
     )
 

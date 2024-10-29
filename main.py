@@ -106,7 +106,7 @@ def optimized_wifi():
     gndplane_position = -0.36
     substrate_cells = 4
     ifa_h = 5.5
-    ifa_l = 21.021
+    ifa_l = 21
     ifa_w1 = 1
     ifa_w2 = 1
     ifa_wf = 0.444
@@ -168,7 +168,7 @@ def wifi_groundplane():
     substrate_cells = 4
     ifa_h = 5.500
     ifa_l = 23
-    ifa_w1 = 0.4
+    ifa_w1 = 1
     ifa_w2 = 1
     ifa_wf = 1
     ifa_fp = 5.000
@@ -185,7 +185,7 @@ def wifi_groundplane():
     override_min_global_grid = 1.2 #none if not override
     max_timesteps = 100000
     plot = True
-    cleanup = False
+    cleanup = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
                                                     showCad=showCad,
@@ -283,4 +283,4 @@ def lte():
 
 #init main function
 if __name__ == "__main__":
-    optimized_wifi()
+    wifi_groundplane()
