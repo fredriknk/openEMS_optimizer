@@ -396,30 +396,30 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     mesh_res = C0 / (f0 + fc) / unit / 20
     if override_min_global_grid is not None:
         mesh_res=override_min_global_grid
-    def cleanup_mesh(meshlines,min_size):
-        print(f"meshlines at start: {mesh.GetLines('x')}")
-        for axis in ['x', 'y', 'z']:
-            lines = mesh.GetLines(axis)
-            print(f"meshlines {axis} before filtering: {lines}")
 
-            # Sort lines to process them in order
-            lines.sort()
+    print(f"meshlines at start: {mesh.GetLines('x')}")
+    for axis in ['x', 'y', 'z']:
+        lines = mesh.GetLines(axis)
+        print(f"meshlines {axis} before filtering: {lines}")
 
-            # Initialize filtered lines with the first line
-            filtered_lines = [lines[0]]
+        # Sort lines to process them in order
+        lines.sort()
 
-            # Iterate over the remaining lines
-            for l in lines[1:]:
-                # Compare with the last line added to filtered_lines
-                if abs(l - filtered_lines[-1]) >= min_size / 4:
-                    filtered_lines.append(l)
-                else:
-                    # Optional: print debug information
-                    print(f"Removing line {l} on {axis}-axis; too close to {filtered_lines[-1]} (distance {abs(l - filtered_lines[-1])})")
+        # Initialize filtered lines with the first line
+        filtered_lines = [lines[0]]
 
-            mesh.SetLines(axis, filtered_lines)
-            print(f"meshlines {axis} after filtering: {mesh.GetLines(axis)}")
-            
+        # Iterate over the remaining lines
+        for l in lines[1:]:
+            # Compare with the last line added to filtered_lines
+            if abs(l - filtered_lines[-1]) >= min_size / 4:
+                filtered_lines.append(l)
+            else:
+                # Optional: print debug information
+                print(f"Removing line {l} on {axis}-axis; too close to {filtered_lines[-1]} (distance {abs(l - filtered_lines[-1])})")
+
+        mesh.SetLines(axis, filtered_lines)
+        print(f"meshlines {axis} after filtering: {mesh.GetLines(axis)}")
+
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
     # Add the nf2ff recording box
     nf2ff = FDTD.CreateNF2FFBox()
