@@ -11,8 +11,10 @@ Tested with
 """
 
 ### Import Libraries
+from dotenv import load_dotenv
 import os
-root = r"C:\opt\openEMS"
+load_dotenv('.env')
+root = rootdir = os.getenv('rootdir')
 os.add_dll_directory(root)
 
 base_path=os.path.abspath(f'runs')
