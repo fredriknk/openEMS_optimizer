@@ -121,7 +121,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    fc=1.0e9,  # 20 dB corner frequency
                    max_timesteps=600000,
                    override_min_global_grid=None,
-                   plot=True):
+                   plot=True,
+                   cleanup=True):
     #############################################################################
     #                substrate_width
     #  _______________________________________________    __ substrate_thickness
@@ -589,7 +590,10 @@ def ifa_simulation(Sim_CSX='IFA.xml',
             # Show all plots
             plt.figure()
             plt.show()
-
+        if cleanup:
+            import shutil
+            print(f"Cleaning up run: {Sim_Path}")
+            shutil.rmtree(Sim_Path)
         return freq, s11_dB, Zin, P_in , hash_prefix
     return None, None, None, None, None
 #init main function
@@ -600,7 +604,7 @@ def wifi():
 
     unit = 1e-3
     substrate_width = 21
-    substrate_length = 83
+    substrate_length = 30
     substrate_thickness = 1.5
     gndplane_position = 0
     substrate_cells = 4
@@ -690,31 +694,31 @@ def bt_groundplane():
 def wifi_groundplane():
     Sim_CSX = 'IFA.xml'
     showCad = True
-    post_proc_only = False
+    post_proc_only = True
 
     unit = 1e-3
     substrate_width = 21
-    substrate_length = 40
+    substrate_length = 20
     substrate_thickness = 1.5
     gndplane_position = -0.36
     substrate_cells = 4
     ifa_h = 5.500
-    ifa_l = 21
-    ifa_w1 = 0.401
+    ifa_l = 40
+    ifa_w1 = 1
     ifa_w2 = 1
     ifa_wf = 1
     ifa_fp = 5.000
     ifa_e = 0.5
     mifa_meander=2
-    mifa_tipdistance=3.0
-    mifa_meander_edge_distance=3.0
+    mifa_tipdistance=2.0
+    mifa_meander_edge_distance=2.0
     substrate_epsR = 4.5
     feed_R = 50
     min_freq = 2.4e9
     center_freq = 2.45e9
     max_freq = 2.5e9
     min_size = 0.2 # minimum automesh size
-    override_min_global_grid = None #none if not override
+    override_min_global_grid = 1.2 #none if not override
     max_timesteps = 800000
     plot = True
 
@@ -813,4 +817,4 @@ def lte():
 
 
 if __name__ == "__main__":
-    bt_groundplane()
+    wifi_groundplane()
