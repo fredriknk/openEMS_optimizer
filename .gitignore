@@ -190,6 +190,6 @@ runs/*
 # exclude logs
 *_log.txt
 *.log
-
+*_log*
 # exclude runs/.gitignore
 !.gitignore
