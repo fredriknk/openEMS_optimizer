@@ -223,19 +223,19 @@ def lte():
     post_proc_only = False
 
     unit = 1e-3
-    substrate_width = 25
-    substrate_length = 40
+    substrate_width = 90
+    substrate_length = 90
     substrate_thickness = 1.5
     gndplane_position = -0.36
     substrate_cells = 4
-    ifa_h = 14
-    ifa_l = 110
-    ifa_w1 = 0.8
-    ifa_w2 = 0.8
-    ifa_wf = 0.8
-    ifa_fp = 4.0
+    ifa_h = 13
+    ifa_l = 70
+    ifa_w1 = 1
+    ifa_w2 = 1
+    ifa_wf = 1
+    ifa_fp = 6
     ifa_e = 0.5
-    mifa_meander=2
+    mifa_meander=2.5
     mifa_tipdistance=3.0
     mifa_meander_edge_distance=3.0
     substrate_epsR = 4.5
@@ -243,9 +243,9 @@ def lte():
     min_freq = 0.78e9
     center_freq = 0.83e9
     max_freq = 0.87e9
-    fc = 0.83e9
-    min_size = 0.20 # minimum automesh size
-    override_min_global_grid = 1 #none if not override
+    fc = 0.83e9-0.5e9
+    min_size = 0.50 # minimum automesh size
+    override_min_global_grid = None #none if not override
     max_timesteps = 800000
     plot = True
 

@@ -610,7 +610,6 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    max_freq=2.5e9,
                    min_size=0.2,#minimum automesh size
                    max_size=4.0,#maximum automesh size
-                   f0=2.45e9,  # center frequency
                    fc=1.0e9,  # 20 dB corner frequency
                    max_timesteps=600000,
                    override_min_global_grid=None,
@@ -638,7 +637,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     #       graphical output carefully.
     #
     ##############################################################################
-
+    f0=center_freq  # center frequency
     unit = 1e-3  # all lengths in mm
     # Derived parameter
     substrate_kappa = 1e-3 * 2 * pi * 2.45e9 * EPS0 * substrate_epsR
