@@ -225,29 +225,29 @@ def lte():
     unit = 1e-3
     substrate_width = 25
     substrate_length = 40
-    substrate_thickness = 1.4
-    gndplane_position = 0
+    substrate_thickness = 1.5
+    gndplane_position = -0.36
     substrate_cells = 4
-    ifa_h = 12.5
-    ifa_l = 90
-    ifa_w1 = 1.5
-    ifa_w2 = 0.7
-    ifa_wf = 0.6
-    ifa_fp = 4.75
+    ifa_h = 14
+    ifa_l = 110
+    ifa_w1 = 0.8
+    ifa_w2 = 0.8
+    ifa_wf = 0.8
+    ifa_fp = 4.0
     ifa_e = 0.5
-    mifa_meander=1.1
-    mifa_tipdistance=2
-    mifa_meander_edge_distance=3
+    mifa_meander=2
+    mifa_tipdistance=3.0
+    mifa_meander_edge_distance=3.0
     substrate_epsR = 4.5
     feed_R = 50
-    center_freq = 0.82e9
-    min_freq = 0.77e9
+    min_freq = 0.78e9
+    center_freq = 0.83e9
     max_freq = 0.87e9
-    f0 = 0.82e9
-    fc = 0.5e9
-    min_size = 0.4 # minimum automesh size
-    plot = True
+    fc = 0.83e9
+    min_size = 0.20 # minimum automesh size
+    override_min_global_grid = 1 #none if not override
     max_timesteps = 800000
+    plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
                                                     showCad=showCad,
@@ -270,17 +270,17 @@ def lte():
                                                     mifa_meander_edge_distance=mifa_meander_edge_distance,
                                                     substrate_epsR=substrate_epsR,
                                                     feed_R=feed_R,
+                                                    fc=fc,
                                                     min_freq=min_freq,
                                                     center_freq=center_freq,
                                                     max_freq=max_freq,
                                                     min_size=min_size,
-                                                    plot=plot,
-                                                    f0=f0,
+                                                    override_min_global_grid=override_min_global_grid,
                                                     max_timesteps=max_timesteps,
-                                                    fc=fc)
+                                                    plot=plot)
 
 
 
 #init main function
 if __name__ == "__main__":
-    wifi_groundplane()
+    lte()
