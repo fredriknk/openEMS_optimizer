@@ -87,7 +87,8 @@ def evaluate(individual):
         'showCad': False,
         'post_proc_only': False,
         'delete_simulation_files': True,
-        'antenna_grid': array_2d
+        'antenna_grid': array_2d,
+        'randomhash': random.randint(0, 1000000)
     }
 
     try:
