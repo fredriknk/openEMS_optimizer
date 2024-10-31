@@ -385,7 +385,7 @@ def prepare_simulation_directory(Sim_Path, Sim_CSX, CSX, showCad, csxcad_locatio
         os.system(csxcad_location + ' "{}"'.format(CSX_file))
 
 
-def run_simulation(FDTD, Sim_Path, sim_file, temp_file):
+def run_simulation(FDTD, Sim_Path, sim_file, temp_file,parameters):
     """
     Run the simulation.
     """
@@ -393,7 +393,7 @@ def run_simulation(FDTD, Sim_Path, sim_file, temp_file):
         try:
             with open(temp_file, 'w') as f:
                 f.write('Running')
-            FDTD.Run(Sim_Path, verbose=0, cleanup=False,numThreads=4)
+            FDTD.Run(Sim_Path, verbose=0, cleanup=False,numThreads=parameters.get('numThreads',0))
             os.remove(temp_file)
             with open(sim_file, 'w') as f:
                 f.write('Completed')
@@ -536,7 +536,28 @@ def post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, ce
 
     return freq, s11_dB, Zin, P_in
 
+def mesh_divide(mesh, axes=['x', 'y', 'z'], num_parts=2):
+    for axis in axes:
+        mesh_lines = mesh.GetLines(axis)
+        new_lines = []
 
+        for i in range(len(mesh_lines) - 1):
+            start_line = mesh_lines[i]
+            end_line = mesh_lines[i + 1]
+
+            # Add the starting line
+            new_lines.append(start_line)
+
+            # Calculate and add 'divisor' lines between start_line and end_line
+            for j in range(1, num_parts):
+                interpolated_line = start_line + (end_line - start_line) * (j / (num_parts))
+                new_lines.append(interpolated_line)
+
+        # Add the last line
+        new_lines.append(mesh_lines[-1])
+
+        # Set the new lines for the axis
+        mesh.SetLines(axis, new_lines)
 def ga_simulation(    parameters = {
         'Sim_CSX' : 'IFA.xml',
         'unit': 1e-3,
@@ -561,7 +582,8 @@ def ga_simulation(    parameters = {
         'showCad': True,
         'post_proc_only': False,
         'delete_simulation_files': True,
-        'antenna_grid': makearray(20, 20)
+        'antenna_grid': makearray(20, 20),
+        'numthreads': 4,
     }):
     #############################################################################
     #                substrate_width
@@ -606,9 +628,12 @@ def ga_simulation(    parameters = {
     unit=parameters['unit']
     
     # Simulation box size
-    SimBox = np.array([substrate_width * 2, (substrate_length + 2 * ant_h) * 2, 150])
+    SimBox = np.array([substrate_width * 2, (substrate_length + 2 * ant_h) * 2, (substrate_length + 2 * ant_h) * 2])
+    if parameters.get('f0', None) is None:
+        f0 = parameters["center_freq"]
+    else:
+        f0 = parameters["f0"]
     
-    f0 = parameters["center_freq"]
     fc = parameters["fc"]
     # Initialize simulation
     FDTD, CSX = initialize_simulation(f0, fc, max_timesteps)
@@ -634,7 +659,12 @@ def ga_simulation(    parameters = {
     
     
     mesh_res = C0 / (f0 + fc) / unit / 20
-    mesh.SmoothMeshLines('all', mesh_res, 1.4)
+    if parameters.get('override_min_global_grid', None) is not None:
+        mesh_res = parameters['override_min_global_grid']
+        
+    mesh.SmoothMeshLines('all', mesh_res, 1.5)
+    if parameters.get('mesh_divide', None) is not None:
+        mesh_divide(mesh, axes=['x', 'y', 'z'], num_parts=parameters.get('mesh_divide'))
     nf2ff = FDTD.CreateNF2FFBox()
     #finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid,
     #              {"x": [], "y": [], "z": [0, substrate_thickness + gndplane_position, substrate_thickness]})
@@ -649,7 +679,15 @@ def ga_simulation(    parameters = {
 
     if not os.path.exists(Sim_Path):
         print(f"Creating directory {Sim_Path}")
-        os.mkdir(Sim_Path)
+        try:
+            os.mkdir(Sim_Path)
+        except OSError:
+            print(f"Creation of the directory {Sim_Path} failed")
+            #make the missing folder
+            missingpath = os.path.dirname(Sim_Path)
+            os.makedirs(missingpath)
+            os.mkdir(Sim_Path)
+            
 
     CSX_file = os.path.join(Sim_Path, Sim_CSX)
     CSX.Write2XML(CSX_file)
@@ -666,7 +704,7 @@ def ga_simulation(    parameters = {
     
     post_proc_only=parameters.get('post_proc_only', False)
     if not post_proc_only and not os.path.exists(sim_file):
-        run_simulation(FDTD, Sim_Path, sim_file, temp_file)
+        run_simulation(FDTD, Sim_Path, sim_file, temp_file,parameters)
     delete_simulation_files = parameters.get('delete_simulation_files', True)
     plot = parameters.get('plot', False)
     if os.path.exists(sim_file):

@@ -8,7 +8,7 @@ from time import time
 import json
 
 
-logpath = 'logs/ga_log.txt'
+logpath = 'logs/ga_log800MHZ1800mhz.txt'
 bestfitness = 0
 
 # Define the shape of the 2D binary array
@@ -84,18 +84,19 @@ def evaluate(individual):
         'ant_fp': 5,
         'ant_e': 0.5,
         'feed_R': 50,
-        'min_freq': 2.4e9,
-        'center_freq': 2.45e9,
-        'max_freq': 2.5e9,
-        'fc': 1.0e9,
-        'max_timesteps': 12000,
+        'min_freq': 0.83e9,
+        'center_freq': 1.5e9,
+        'max_freq': 1.8e9,
+        'fc': 0.8e9,
+        'max_timesteps': 20000,
         'override_min_global_grid': None,
         'plot': False,  # Set to True to plot results
         'showCad': False,
         'post_proc_only': False,
         'delete_simulation_files': True,
         'antenna_grid': array_2d,
-        'randomhash': random.randint(0, 1000000)
+        'randomhash': random.randint(0, 1000000),
+        'frequencies': [0.8e9,1.5e9,1.8e9]
     }
 
     try:
@@ -103,57 +104,35 @@ def evaluate(individual):
         freq, s11_dB, Zin, P_in, hash_prefix = ga_simulation(params)
 
         # Extract S11 at center frequency
-        center_freq = params['center_freq']
-        idx = (np.abs(freq - center_freq)).argmin()
-        s11_at_center = s11_dB[idx]
-        fitness = s11_at_center
-        
-        idx = np.argmin(np.abs(freq - center_freq))
-        s11_value = s11_dB[idx]
+        fitness = 1.0
+        s11_at_center, impedance, reactance = [], [], []
+
+        for f in params["frequencies"]:
+            idx = (np.abs(freq - f)).argmin()
+            s11_value = s11_dB[idx]
+            s11_at_center.append(s11_value)
+            fitness *= abs(s11_value) if s11_value <= 0 else 0 # Penalize positive S11 values
+
+        fitness *= -1
         # round value to 2 decimal places
 
-        f_res_ind = np.argmin(s11_dB)
-        f_res = freq[f_res_ind]
-        s_11_min = s11_dB[f_res_ind]
         # bandwidth at xDB
-        minS11 = -6
+        minS11 = -10
 
-        first_crossing = -1
-        last_crossing = -1
-        if f_res_ind != 0 and s_11_min < minS11:
-            for i in range(0, f_res_ind):
-                if s11_dB[i] < minS11:
-                    first_crossing = freq[i]
-                    break
-
-            # Find the last frequency crossing over -10 dB after f_res_ind
-
-            for i in range(f_res_ind, len(s11_dB)):
-                if s11_dB[i] > minS11:
-                    last_crossing = freq[i]
-                    break
 
         impedance = np.real(Zin[idx])
         reactance = np.imag(Zin[idx])
 
         bandwidth = -1
-        # specify the bandwidth:
-        if first_crossing is not -1 or last_crossing is not -1:
-            bandwidth = last_crossing - first_crossing
+        
         total_seconds = time() - starttime
         
         params_serializable = serialize_data(params)
         
         log_data = {
             "total_seconds": round(total_seconds, 2),
-            "S11_at_cf": round(s11_value, 4),
-            "impedance": f"{impedance:.1f}R",
-            "reactance": f"{reactance:.1f}z",
-            "resonant_frequency": f"{f_res / 1e9:.3f} GHz",
-            "S11_at_resonant_frequency": round(s_11_min, 3),
-            "bandwidth_lower": round(first_crossing / 1e9, 2),
-            "bandwidth_upper": round(last_crossing / 1e9, 2),
-            "bandwidth": f"{bandwidth / 1e6:.1f} MHz",
+            "fitness": f"{fitness:.4f}",    
+            "S11_at_cf": [f"{val:.3f}" for val in s11_at_center],
             "params": params_serializable  # Convert array to list
         }
         log_message = json.dumps(log_data, separators=(',', ':'))
@@ -186,7 +165,7 @@ def optimize_antenna():
         filemode='a'  # Append mode
     )
     # Initialize population
-    population = toolbox.population(n=30)
+    population = toolbox.population(n=50)
 
     # Statistics to keep track of progress
     stats = tools.Statistics(lambda ind: ind.fitness.values)
@@ -198,9 +177,9 @@ def optimize_antenna():
     hof = tools.HallOfFame(1)
 
     # Genetic Algorithm parameters
-    NGEN = 100  # Number of generations
-    CXPB = 0.5  # Crossover probability
-    MUTPB = 0.2  # Mutation probability
+    NGEN = 200  # Number of generations
+    CXPB = 0.8  # Crossover probability
+    MUTPB = 0.1  # Mutation probability
 
     # Run the Genetic Algorithm
     algorithms.eaSimple(
@@ -251,6 +230,7 @@ if __name__ == "__main__":
         'post_proc_only': False,
         'delete_simulation_files': True,
         'antenna_grid': best_array_2d
+        
     }
     freq, s11_dB, Zin, P_in, hash_prefix = ga_simulation(params)
     # Now you can plot or analyze the results as needed
