@@ -261,7 +261,7 @@ def create_ga(FDTD, CSX, mesh, parameters):
     feed_cell_y = num_cells_y - 1  # Assuming feed is at the bottom row
     
     
-    for i in range(0,num_cells_x):
+    for i in range(0,num_cells_x-1):
         antenna_grid[feed_cell_y, i] = 0  # never cover the feed position
         #antenna_grid[feed_cell_y, feed_cell_x-i] = 0  # never cover the feed position
     

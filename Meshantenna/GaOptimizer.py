@@ -88,7 +88,7 @@ def evaluate(individual):
         'center_freq': 2.45e9,
         'max_freq': 2.5e9,
         'fc': 1.0e9,
-        'max_timesteps': 5000,
+        'max_timesteps': 12000,
         'override_min_global_grid': None,
         'plot': False,  # Set to True to plot results
         'showCad': False,
