@@ -151,8 +151,8 @@ def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickn
     stop = [substrate_width / 2 - ifa_e, substrate_length / 2 - ifa_e, substrate_thickness + gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
-    FDTD.AddEdges2Grid(dirs='y', properties=gnd)
-    mesh.AddLine("x",stop[1])
+    FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
+    #mesh.AddLine("x",stop+)
 
 def find_contiguous_blocks(grid):
     """
@@ -269,10 +269,10 @@ def create_ga(FDTD, CSX, mesh, parameters):
         ifa_material.AddBox(start, stop, priority=10)
 
         # Add meshlines to ensure proper meshing
-        mesh.AddLine('x', [(start[0]+stop[0])/2])
-        mesh.AddLine('y', [(start[1]+stop[1])/2])
+        #mesh.AddLine('x', [(start[0]+stop[0])/2])
+        #mesh.AddLine('y', [(start[1]+stop[1])/2])
 
-    #FDTD.AddEdges2Grid(dirs='xy', properties=ifa_material)
+    FDTD.AddEdges2Grid(dirs='xy', properties=ifa_material)
 
 
 
@@ -314,11 +314,11 @@ def add_feed(FDTD, CSX, mesh, parameters):
         #port_start = np.array([-20, 10, 1.5])
         #port_stop = np.array([-25, 12, 1.5])
 
-    mesh.AddLine('x', [(port_start[0] + port_stop[0]) / 2])
-    mesh.AddLine('y', [(port_start[1] + port_stop[1]) / 2])
+    mesh.AddLine('x', [port_start[0] , port_stop[0]])
+    mesh.AddLine('y', [port_start[1] , port_stop[1]])
     # Add the lumped port to the FDTD simulation
     port = FDTD.AddLumpedPort(1, feed_R, port_start, port_stop, feed_direction, 1.0, priority=50)
-
+    #FDTD.AddEdges2Grid
     return port
 
 def prepare_simulation_directory(Sim_Path, Sim_CSX, CSX, showCad, csxcad_location):
