@@ -151,8 +151,8 @@ def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickn
     stop = [substrate_width / 2 - ifa_e, substrate_length / 2 - ifa_e, substrate_thickness + gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
-    FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
-    #mesh.AddLine("x",start)
+    FDTD.AddEdges2Grid(dirs='y', properties=gnd)
+    mesh.AddLine("x",stop[1])
 
 def find_contiguous_blocks(grid):
     """
@@ -298,42 +298,26 @@ def add_feed(FDTD, CSX, mesh, parameters):
     start_y = feed_point[1]-cell_size_y/2
     stop_y = feed_point[1]+cell_size_y/2
     start_z = feed_point[2]
-
-    if gndplane_position != 0:
-        # Feed connects vertically (z-direction) to the ground plane at z = substrate_thickness + gndplane_position
-        feed_direction = 'z'
-        ground_plane_z = substrate_thickness + gndplane_position
-        stop_z = ground_plane_z
-        start_coord = np.array([start_x, start_y, start_z])
-        stop_coord = np.array([stop_x, stop_y, stop_z])
-    else:
-        # Feed connects horizontally (x-direction) to the ground plane at x = -substrate_width / 2 + ifa_e
-        feed_direction = 'y'
-        ground_plane_x = -substrate_width / 2 + ifa_e
-        #
-        start_coord = np.array([start_x, start_y, start_z])
-        stop_coord = np.array([stop_x, stop_y, start_z])  # z remains the same
-
-    # Add the feed box to the CSX structure
-    ifa_material.AddBox(start_coord, stop_coord, priority=20)  # Higher priority for meshing
-
-    # Add meshlines along the feed box edges
-    mesh.AddLine('x', [start_coord[0], stop_coord[0]])
-    mesh.AddLine('y', [start_coord[1], stop_coord[1]])
-    mesh.AddLine('z', [start_coord[2], stop_coord[2]])
+    stop_z = feed_point[2] + substrate_thickness
 
     # Now, add the lumped port between the feed box and the ground plane
     if gndplane_position != 0:
+        feed_direction = 'z'
         # Lumped port is at the bottom face of the feed box in z-direction
-        port_start = np.array([start_x, start_y, stop_z])
+        port_start = np.array([start_x, start_y, start_z])
         port_stop = np.array([stop_x, stop_y, stop_z])
     else:
+        feed_direction = 'y'
         # Lumped port is at the side face of the feed box in x-direction
-        port_start = np.array([stop_x, start_y, start_z])
+        port_start = np.array([start_x, start_y, start_z])
         port_stop = np.array([stop_x, stop_y, start_z])
+        #port_start = np.array([-20, 10, 1.5])
+        #port_stop = np.array([-25, 12, 1.5])
 
+    mesh.AddLine('x', [(port_start[0] + port_stop[0]) / 2])
+    mesh.AddLine('y', [(port_start[1] + port_stop[1]) / 2])
     # Add the lumped port to the FDTD simulation
-    port = FDTD.AddLumpedPort(1, feed_R, port_start, port_stop, feed_direction, 1.0, priority=5)
+    port = FDTD.AddLumpedPort(1, feed_R, port_start, port_stop, feed_direction, 1.0, priority=50)
 
     return port
 
@@ -660,7 +644,6 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     # Finalize the mesh
 
     mesh_res = C0 / (f0 + fc) / unit / 20
-    mesh_res=0.6
     mesh.SmoothMeshLines('all', mesh_res, 1.4)
     nf2ff = FDTD.CreateNF2FFBox()
     #finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid,
