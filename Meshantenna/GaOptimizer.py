@@ -12,7 +12,7 @@ logpath = 'logs/ga_log.txt'
 bestfitness = 0
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (20, 20)  # Example shape, adjust as needed
+ARRAY_SHAPE = (40, 40)  # Example shape, adjust as needed
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -23,8 +23,13 @@ creator.create("Individual", list, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()
 
+import random
+
+def biased_attr_bool():
+    return random.choices([0, 1], weights=[0.8, 0.2])[0]
+
 # Attribute generator for binary elements (0 or 1)
-toolbox.register("attr_bool", random.randint, 0, 1)
+toolbox.register("attr_bool", biased_attr_bool)
 
 # Structure initializer for individuals (flattened binary arrays)
 toolbox.register(
@@ -35,6 +40,8 @@ toolbox.register(
     n=NUM_ELEMENTS,
 )
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+
 
 def serialize_data(data):
     if isinstance(data, np.ndarray):
@@ -81,7 +88,7 @@ def evaluate(individual):
         'center_freq': 2.45e9,
         'max_freq': 2.5e9,
         'fc': 1.0e9,
-        'max_timesteps': 10714,
+        'max_timesteps': 5000,
         'override_min_global_grid': None,
         'plot': False,  # Set to True to plot results
         'showCad': False,
@@ -179,7 +186,7 @@ def optimize_antenna():
         filemode='a'  # Append mode
     )
     # Initialize population
-    population = toolbox.population(n=20)
+    population = toolbox.population(n=30)
 
     # Statistics to keep track of progress
     stats = tools.Statistics(lambda ind: ind.fitness.values)
@@ -191,7 +198,7 @@ def optimize_antenna():
     hof = tools.HallOfFame(1)
 
     # Genetic Algorithm parameters
-    NGEN = 10  # Number of generations
+    NGEN = 100  # Number of generations
     CXPB = 0.5  # Crossover probability
     MUTPB = 0.2  # Mutation probability
 

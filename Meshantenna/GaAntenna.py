@@ -263,6 +263,7 @@ def create_ga(FDTD, CSX, mesh, parameters):
     antenna_grid[feed_cell_y, feed_cell_x] = 0  # never cover the feed position
     antenna_grid[feed_cell_y, feed_cell_x+1] = 0  # never cover the feed position
     antenna_grid[feed_cell_y, feed_cell_x-1] = 0  # never cover the feed position
+    antenna_grid[-5:-1, feed_cell_x]=1
     
     feed_x = tl[0] + feed_cell_x * cell_size_x + cell_size_x / 2
     feed_y = tl[1] - feed_cell_y * cell_size_y - cell_size_y / 2
