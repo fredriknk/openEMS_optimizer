@@ -216,7 +216,7 @@ def makearray(num_cells_x,num_cells_y,antenna_grid = None, makesafe=False):
     #random.seed(78)
     for x in range(0, num_cells_x):
         for y in range(0, num_cells_y):
-            if random.random() < 0.1:
+            if random.random() < 0.4:
                 antenna_grid[y, x] = 1
     
     return antenna_grid
@@ -259,10 +259,12 @@ def create_ga(FDTD, CSX, mesh, parameters):
     # Define the feedpoint coordinates
     feed_cell_x = int(ant_fp / cell_size_x)
     feed_cell_y = num_cells_y - 1  # Assuming feed is at the bottom row
-
-    antenna_grid[feed_cell_y, feed_cell_x] = 0  # never cover the feed position
-    antenna_grid[feed_cell_y, feed_cell_x+1] = 0  # never cover the feed position
-    antenna_grid[feed_cell_y, feed_cell_x-1] = 0  # never cover the feed position
+    
+    
+    for i in range(0,num_cells_x):
+        antenna_grid[feed_cell_y, i] = 0  # never cover the feed position
+        #antenna_grid[feed_cell_y, feed_cell_x-i] = 0  # never cover the feed position
+    
     antenna_grid[-5:-1, feed_cell_x]=1
     
     feed_x = tl[0] + feed_cell_x * cell_size_x + cell_size_x / 2

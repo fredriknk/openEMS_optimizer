@@ -26,7 +26,7 @@ toolbox = base.Toolbox()
 import random
 
 def biased_attr_bool():
-    return random.choices([0, 1], weights=[0.8, 0.2])[0]
+    return random.choices([0, 1], weights=[0.6, 0.4])[0]
 
 # Attribute generator for binary elements (0 or 1)
 toolbox.register("attr_bool", biased_attr_bool)
