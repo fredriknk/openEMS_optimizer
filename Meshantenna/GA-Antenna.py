@@ -125,7 +125,7 @@ def setup_mesh(mesh, SimBox, unit):
 
 
 def create_substrate(CSX, substrate_width, substrate_length, substrate_thickness, ifa_h, ifa_e, substrate_epsR,
-                     substrate_kappa, substrate_cells, unit, mesh):
+                     substrate_kappa, substrate_cells, unit, mesh,FDTD):
     """
     Create the substrate in the CSX structure.
     """
@@ -136,12 +136,13 @@ def create_substrate(CSX, substrate_width, substrate_length, substrate_thickness
     stop = [substrate_width / 2, substrate_length / 2 + ifa_h + ifa_e, substrate_thickness]
     substrate.AddBox(start=start, stop=stop, priority=1)
 
+    FDTD.AddEdges2Grid(dirs='xy', properties=substrate)
     # Add extra cells to discretize the substrate thickness
     mesh.AddLine('z', np.linspace(0, substrate_thickness, substrate_cells + 1))
 
 
 def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickness, ifa_e, gndplane_position, mesh,
-                        min_size, max_size):
+                        min_size, max_size,FDTD):
     """
     Create the ground plane in the CSX structure.
     """
@@ -150,8 +151,8 @@ def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickn
     stop = [substrate_width / 2 - ifa_e, substrate_length / 2 - ifa_e, substrate_thickness + gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
-
-    mesh.AddLine("x",start)
+    FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
+    #mesh.AddLine("x",start)
 
 def find_contiguous_blocks(grid):
     """
@@ -192,7 +193,7 @@ def find_contiguous_blocks(grid):
 
     return blocks
 
-def create_ga(CSX, mesh, parameters):
+def create_ga(FDTD, CSX, mesh, parameters):
     """
     Create the GA-based antenna in the CSX structure.
     """
@@ -268,8 +269,10 @@ def create_ga(CSX, mesh, parameters):
         ifa_material.AddBox(start, stop, priority=10)
 
         # Add meshlines to ensure proper meshing
-        mesh.AddLine('x', [start[0], stop[0]])
-        mesh.AddLine('y', [start[1], stop[1]])
+        mesh.AddLine('x', [(start[0]+stop[0])/2])
+        mesh.AddLine('y', [(start[1]+stop[1])/2])
+
+    #FDTD.AddEdges2Grid(dirs='xy', properties=ifa_material)
 
 
 
@@ -513,12 +516,12 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    substrate_thickness=1.5,
                    gndplane_position=0,
                    substrate_cells=4,
-                   ifa_h=14.054,
+                   ifa_h=20,
                    ifa_l=20,
                    ifa_w1=0.608,
                    ifa_w2=0.400,
                    ifa_wf=0.762,
-                   ifa_fp=5.368,
+                   ifa_fp=1,
                    ifa_e=0.5,
                    mifa_meander=3.0,
                    mifa_tipdistance=2.0,
@@ -608,11 +611,11 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Create substrate
     create_substrate(CSX, substrate_width, substrate_length, substrate_thickness, ifa_h, ifa_e, substrate_epsR,
-                     substrate_kappa, substrate_cells, unit, mesh)
+                     substrate_kappa, substrate_cells, unit, mesh,FDTD)
 
     # Create ground plane
     create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickness, ifa_e, gndplane_position, mesh,
-                        min_size, max_size)
+                        min_size, max_size,FDTD)
 
     # Create IFA
     parameters = {
@@ -643,11 +646,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     }
     f0 = center_freq
     fc = parameters["fc"]
-    create_ga(CSX, mesh, parameters)
 
-    # Apply the excitation & resistor as a current source
-    tl = np.array([-substrate_width / 2 + ifa_e + ifa_fp, substrate_length / 2 - ifa_e,
-                   substrate_thickness])  # translation vector
+    create_ga(FDTD, CSX, mesh, parameters)
+
     via_diameter = 0.3
     if gndplane_position != 0:
         feedpoint = -via_diameter  # set feedpoint to groundplane edge
@@ -657,6 +658,10 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     port = add_feed(FDTD, CSX, mesh, parameters)
 
     # Finalize the mesh
+
+    mesh_res = C0 / (f0 + fc) / unit / 20
+    mesh_res=0.6
+    mesh.SmoothMeshLines('all', mesh_res, 1.4)
     nf2ff = FDTD.CreateNF2FFBox()
     #finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid,
     #              {"x": [], "y": [], "z": [0, substrate_thickness + gndplane_position, substrate_thickness]})
