@@ -124,35 +124,51 @@ def setup_mesh(mesh, SimBox, unit):
     mesh.AddLine('z', [-SimBox[2] / 2, SimBox[2] / 2])
 
 
-def create_substrate(CSX, substrate_width, substrate_length, substrate_thickness, ifa_h, ifa_e, substrate_epsR,
-                     substrate_kappa, substrate_cells, unit, mesh,FDTD):
+def create_substrate(CSX, parameters, mesh, FDTD):
     """
-    Create the substrate in the CSX structure.
+    Create the substrate in the CSX structure using parameters from the dictionary.
     """
-    # Create substrate
+    substrate_width = parameters['substrate_width']
+    substrate_length = parameters['substrate_length']
+    substrate_thickness = parameters['substrate_thickness']
+    substrate_epsR = parameters['substrate_epsR']
+    substrate_kappa = parameters.get('substrate_kappa', 1e-3 * 2 * np.pi * parameters['center_freq'] * EPS0 * substrate_epsR)
+    substrate_cells = parameters['substrate_cells']
+    unit = parameters['unit']
+    ant_h = parameters['ant_h']
+    ant_e = parameters['ant_e']
+    
+    # Create substrate material
     substrate = CSX.AddMaterial('substrate', epsilon=substrate_epsR, kappa=substrate_kappa)
-
     start = [-substrate_width / 2, -substrate_length / 2, 0]
-    stop = [substrate_width / 2, substrate_length / 2 + ifa_h + ifa_e, substrate_thickness]
+    stop = [substrate_width / 2, substrate_length / 2 + ant_h + ant_e, substrate_thickness]
     substrate.AddBox(start=start, stop=stop, priority=1)
 
+    # Add edges and additional mesh lines
     FDTD.AddEdges2Grid(dirs='xy', properties=substrate)
-    # Add extra cells to discretize the substrate thickness
     mesh.AddLine('z', np.linspace(0, substrate_thickness, substrate_cells + 1))
 
 
-def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickness, ifa_e, gndplane_position, mesh,
-                        min_size, max_size,FDTD):
+def create_ground_plane(CSX, parameters, mesh, FDTD):
     """
-    Create the ground plane in the CSX structure.
+    Create the ground plane in the CSX structure using parameters from the dictionary.
     """
+    substrate_width = parameters['substrate_width']
+    substrate_length = parameters['substrate_length']
+    substrate_thickness = parameters['substrate_thickness']
+    ant_e = parameters['ant_e']
+    gndplane_position = parameters['gndplane_position']
+
+    # Create ground plane material
     gnd = CSX.AddMetal('groundplane')
-    start = [-substrate_width / 2 + ifa_e, -substrate_length / 2 + ifa_e, substrate_thickness + gndplane_position]
-    stop = [substrate_width / 2 - ifa_e, substrate_length / 2 - ifa_e, substrate_thickness + gndplane_position]
+    start = [-substrate_width / 2 + ant_e, -substrate_length / 2 + ant_e, substrate_thickness + gndplane_position]
+    stop = [substrate_width / 2 - ant_e, substrate_length / 2 - ant_e, substrate_thickness + gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
+    # Add edges and optional mesh line
     FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
-    #mesh.AddLine("x",start)
+    # Optional: add mesh line along 'x' if needed
+    # mesh.AddLine("x", start)
 
 def find_contiguous_blocks(grid):
     """
@@ -193,6 +209,18 @@ def find_contiguous_blocks(grid):
 
     return blocks
 
+def makearray(num_cells_x,num_cells_y,antenna_grid = None, makesafe=False):
+    if antenna_grid is None:
+        antenna_grid = np.zeros((num_cells_y, num_cells_x), dtype=int)
+    import random
+    #random.seed(78)
+    for x in range(0, num_cells_x):
+        for y in range(0, num_cells_y):
+            if random.random() < 0.1:
+                antenna_grid[y, x] = 1
+    
+    return antenna_grid
+
 def create_ga(FDTD, CSX, mesh, parameters):
     """
     Create the GA-based antenna in the CSX structure.
@@ -202,35 +230,40 @@ def create_ga(FDTD, CSX, mesh, parameters):
     substrate_width = parameters['substrate_width']
     substrate_length = parameters['substrate_length']
     substrate_thickness = parameters['substrate_thickness']
-    ifa_h = parameters['ifa_h']  # antenna height (y-direction)
-    ifa_l = parameters['ifa_l']  # antenna length (x-direction)
-    ifa_fp = parameters['ifa_fp']  # feedpoint position along x
-    ifa_e = parameters['ifa_e']  # edge distance
+    ant_h = parameters['ant_h']  # antenna height (y-direction)
+    ant_l = parameters['ant_l']  # antenna length (x-direction)
+    ant_fp = parameters['ant_fp']  # feedpoint position along x
+    ant_e = parameters['ant_e']  # edge distance
     gndplane_position = parameters['gndplane_position']  # depth of the ground plane in z
+    antenna_grid = parameters['antenna_grid']  # 2D grid of the antenna pattern
 
     # Create IFA material
     ifa_material = CSX.AddMetal('ifa')
 
     # Define the top-left coordinate (origin for the antenna grid)
-    tl = np.array([-substrate_width / 2 + ifa_e, substrate_length / 2 +ifa_h- ifa_e,
+    tl = np.array([-substrate_width / 2 + ant_e, substrate_length / 2 +ant_h- ant_e,
                    substrate_thickness])  # translation vector
-
-    # Define the number of cells in the x and y directions
-    num_cells_x = parameters.get('num_cells_x', 20)  # Default to 10 cells if not provided
-    num_cells_y = parameters.get('num_cells_y', 20)  # Default to 20 cells if not provided
-
+    
+    
+    num_cells_x = antenna_grid.shape[1]
+    num_cells_y = antenna_grid.shape[0]
     # Define the physical size of each cell
-    cell_size_x = ifa_l / num_cells_x
-    cell_size_y = ifa_h / num_cells_y
+    cell_size_x = ant_l / num_cells_x
+    cell_size_y = ant_h / num_cells_y
+    
 
     # Store cell sizes in parameters for use in add_feed
     parameters['cell_size_x'] = cell_size_x
     parameters['cell_size_y'] = cell_size_y
 
     # Define the feedpoint coordinates
-    feed_cell_x = int(ifa_fp / cell_size_x)
+    feed_cell_x = int(ant_fp / cell_size_x)
     feed_cell_y = num_cells_y - 1  # Assuming feed is at the bottom row
 
+    antenna_grid[feed_cell_y, feed_cell_x] = 0  # never cover the feed position
+    antenna_grid[feed_cell_y, feed_cell_x+1] = 0  # never cover the feed position
+    antenna_grid[feed_cell_y, feed_cell_x-1] = 0  # never cover the feed position
+    
     feed_x = tl[0] + feed_cell_x * cell_size_x + cell_size_x / 2
     feed_y = tl[1] - feed_cell_y * cell_size_y - cell_size_y / 2
     feed_z = tl[2]
@@ -239,14 +272,10 @@ def create_ga(FDTD, CSX, mesh, parameters):
     parameters['feed_point'] = np.array([feed_x, feed_y, feed_z])
 
     # Create a test grid (this should be replaced with your GA-generated grid)
-    antenna_grid = np.zeros((num_cells_y, num_cells_x), dtype=int)
+    
 
     # Example pattern (modify this as needed)
     # Example pattern: a diagonal line
-    for i in range(min(num_cells_x, num_cells_y)):
-        antenna_grid[i, i] = 1
-
-    antenna_grid[-12:-1,feed_cell_x]=1
 
     # Find contiguous blocks in the grid
     blocks = find_contiguous_blocks(antenna_grid)
@@ -268,11 +297,12 @@ def create_ga(FDTD, CSX, mesh, parameters):
         # Add the box to the CSX structure
         ifa_material.AddBox(start, stop, priority=10)
 
-        # Add meshlines to ensure proper meshing
-        mesh.AddLine('x', [start[0], stop[0]])
-        mesh.AddLine('y', [start[1], stop[1]])
+    x_meshlines = [tl[0] + i * cell_size_x for i in range(num_cells_x + 1)]
+    y_meshlines = [tl[1] - i * cell_size_y for i in range(num_cells_y + 1)]
 
-    FDTD.AddEdges2Grid(dirs='xy', properties=ifa_material)
+    # Add meshlines along X and Y
+    mesh.AddLine('x', x_meshlines)
+    mesh.AddLine('y', y_meshlines)
 
 
 
@@ -286,7 +316,7 @@ def add_feed(FDTD, CSX, mesh, parameters):
     gndplane_position = parameters['gndplane_position']
     substrate_thickness = parameters['substrate_thickness']
     substrate_width = parameters['substrate_width']
-    ifa_e = parameters['ifa_e']
+    ant_e = parameters['ant_e']
     feed_R = parameters['feed_R']
     cell_size_x = parameters['cell_size_x']
     cell_size_y = parameters['cell_size_y']
@@ -307,9 +337,9 @@ def add_feed(FDTD, CSX, mesh, parameters):
         start_coord = np.array([start_x, start_y, start_z])
         stop_coord = np.array([stop_x, stop_y, stop_z])
     else:
-        # Feed connects horizontally (x-direction) to the ground plane at x = -substrate_width / 2 + ifa_e
+        # Feed connects horizontally (x-direction) to the ground plane at x = -substrate_width / 2 + ant_e
         feed_direction = 'y'
-        ground_plane_x = -substrate_width / 2 + ifa_e
+        ground_plane_x = -substrate_width / 2 + ant_e
         #
         start_coord = np.array([start_x, start_y, start_z])
         stop_coord = np.array([stop_x, stop_y, start_z])  # z remains the same
@@ -360,7 +390,7 @@ def run_simulation(FDTD, Sim_Path, sim_file, temp_file):
         try:
             with open(temp_file, 'w') as f:
                 f.write('Running')
-            FDTD.Run(Sim_Path, verbose=0, cleanup=False)
+            FDTD.Run(Sim_Path, verbose=0, cleanup=False,numThreads=4)
             os.remove(temp_file)
             with open(sim_file, 'w') as f:
                 f.write('Completed')
@@ -480,14 +510,11 @@ def post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, ce
         # Prepare the parameters text with table-like formatting
         parameters_text = (
             f"{'IFA Parameters:':<30}\n"
-            f"{'ifa_h:':<20}{parameters['ifa_h']:>10.3f} mm "
-            f"{'ifa_l:':<20}{parameters['ifa_l']:>10.3f} mm\n"
-            f"{'ifa_w1:':<20}{parameters['ifa_w1']:>10.3f} mm "
-            f"{'ifa_w2:':<20}{parameters['ifa_w2']:>10.3f} mm\n"
-            f"{'ifa_wf:':<20}{parameters['ifa_wf']:>10.3f} mm "
-            f"{'ifa_fp:':<20}{parameters['ifa_fp']:>10.3f} mm\n"
-            f"{'ifa_e:':<20}{parameters['ifa_e']:>10.3f} mm "
-            f"{'ifa_h + ifa_e:':<20}{parameters['ifa_h'] + parameters['ifa_e']:>10.3f} mm\n\n"
+            f"{'ant_h:':<20}{parameters['ant_h']:>10.3f} mm "
+            f"{'ant_l:':<20}{parameters['ant_l']:>10.3f} mm\n"
+            f"{'ant_fp:':<20}{parameters['ant_fp']:>10.3f} mm\n"
+            f"{'ant_e:':<20}{parameters['ant_e']:>10.3f} mm "
+            f"{'ant_h + ant_e:':<20}{parameters['ant_h'] + parameters['ant_e']:>10.3f} mm\n\n"
             f"{'Substrate Properties:':<30}\n"
             f"{'substrate_epsR:':<20}{parameters.get('substrate_epsR', 'N/A'):>10} "
             f"{'substrate_kappa:':<20}{parameters.get('substrate_kappa', 'N/A'):>10} S/m\n\n"
@@ -507,51 +534,46 @@ def post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, ce
     return freq, s11_dB, Zin, P_in
 
 
-def ifa_simulation(Sim_CSX='IFA.xml',
-                   showCad=True,
-                   post_proc_only=False,
-                   unit=1e-3,
-                   substrate_width=21,
-                   substrate_length=40,
-                   substrate_thickness=1.5,
-                   gndplane_position=0,
-                   substrate_cells=4,
-                   ifa_h=14.054,
-                   ifa_l=20,
-                   ifa_w1=0.608,
-                   ifa_w2=0.400,
-                   ifa_wf=0.762,
-                   ifa_fp=5.368,
-                   ifa_e=0.5,
-                   mifa_meander=3.0,
-                   mifa_tipdistance=2.0,
-                   mifa_meander_edge_distance=3.0,
-                   substrate_epsR=4.5,
-                   feed_R=50,
-                   min_freq=2.4e9,
-                   center_freq=2.45e9,
-                   max_freq=2.5e9,
-                   min_size=0.2,  # minimum automesh size
-                   max_size=4.0,  # maximum automesh size
-                   fc=1.0e9,  # 20 dB corner frequency
-                   max_timesteps=600000,
-                   override_min_global_grid=None,
-                   plot=True,
-                   delete_simulation_files=True):
+def ga_simulation(    parameters = {
+        'Sim_CSX' : 'IFA.xml',
+        'unit': 1e-3,
+        'substrate_width': 21,
+        'substrate_length': 20,
+        'substrate_thickness': 1.5,
+        'substrate_epsR': 4.5,
+        'gndplane_position': 0,
+        'substrate_cells': 4,
+        'ant_h': 14,
+        'ant_l': 20,
+        'ant_fp': 5,
+        'ant_e': 0.5,
+        'feed_R': 50,
+        'min_freq': 2.4e9,
+        'center_freq': 2.45e9,
+        'max_freq': 2.5e9,
+        'fc': 1.0e9,
+        'max_timesteps': 600000,
+        'override_min_global_grid': None,
+        'plot': True,  # Set to True to plot results
+        'showCad': True,
+        'post_proc_only': False,
+        'delete_simulation_files': True,
+        'antenna_grid': makearray(20, 20)
+    }):
     #############################################################################
     #                substrate_width
     #  _______________________________________________    __ substrate_thickness
     # | A        X                                    |\  __
     # | |        XXXX      X   X                      | |
-    # | |ifa_h      XXXX  XX                          | |
+    # | |ant_h      XXXX  XX                          | |
     # | |         X    XXXX   X                       | | ______
-    # | |                   xxxx                      | ||mifa_edgedistance (minimum value)
+    # | |                   xxxx                      | ||mant_edgedistance (minimum value)
     # |_V______________________x______________________| ||______
-    # | <-ifa_e->|            |x                      | |
+    # | <-ant_e->|            |x                      | |
     # |                       |                       | |
     # |                       |                       | |
     # |                       |                       | | substrate_length
-    # |<- ifa_fp----------- ->|       x=metal         | |
+    # |<- ant_fp----------- ->|       x=metal         | |
     # |                                               | |
     # |_______________________________________________| |
     #  \_______________________________________________\|
@@ -560,38 +582,11 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     #       graphical output carefully.
     #
     ##############################################################################
-    f0 = center_freq  # center frequency
-    unit = 1e-3  # all lengths in mm
-    # Derived parameter
-    substrate_kappa = 1e-3 * 2 * pi * 2.45e9 * EPS0 * substrate_epsR
+    
+    # Create IFA
 
-    params_tuple = (
-        Sim_CSX,
-        unit,
-        substrate_width,
-        substrate_length,
-        substrate_thickness,
-        gndplane_position,
-        substrate_cells,
-        ifa_h,
-        ifa_l,
-        ifa_w1,
-        ifa_w2,
-        ifa_wf,
-        ifa_fp,
-        ifa_e,
-        mifa_meander,
-        mifa_tipdistance,
-        mifa_meander_edge_distance,
-        substrate_epsR,
-        feed_R,
-        min_size,
-        max_size,
-        max_timesteps,
-        override_min_global_grid,
-        f0,
-        fc,
-    )
+
+    params_tuple = tuple(parameters.items())
 
     params_str = '_'.join(map(str, params_tuple))
     # Generate a SHA256 hash of the parameters string
@@ -601,64 +596,40 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     # Create the simulation path using the hash
     Sim_Path = os.path.join(base_path, f'tmp_IFA_{hash_prefix}')
 
+    substrate_width=parameters['substrate_width']
+    substrate_length=parameters['substrate_length']
+    ant_h=parameters['ant_h']
+    max_timesteps=parameters['max_timesteps']
+    unit=parameters['unit']
+    
     # Simulation box size
-    SimBox = np.array([substrate_width * 2, (substrate_length + 2 * ifa_h) * 2, 150])
-
+    SimBox = np.array([substrate_width * 2, (substrate_length + 2 * ant_h) * 2, 150])
+    
+    f0 = parameters["center_freq"]
+    fc = parameters["fc"]
     # Initialize simulation
     FDTD, CSX = initialize_simulation(f0, fc, max_timesteps)
     mesh = CSX.GetGrid()
     setup_mesh(mesh, SimBox, unit)
-
+    
+    
     # Create substrate
-    create_substrate(CSX, substrate_width, substrate_length, substrate_thickness, ifa_h, ifa_e, substrate_epsR,
-                     substrate_kappa, substrate_cells, unit, mesh,FDTD)
+    create_substrate(CSX, parameters, mesh, FDTD)
 
     # Create ground plane
-    create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickness, ifa_e, gndplane_position, mesh,
-                        min_size, max_size,FDTD)
+    create_ground_plane(CSX, parameters, mesh, FDTD)
 
-    # Create IFA
-    parameters = {
-        'unit': unit,
-        'substrate_width': substrate_width,
-        'substrate_length': substrate_length,
-        'substrate_thickness': substrate_thickness,
-        "substrate_epsR": substrate_epsR,
-        "substrate_kappa": substrate_kappa,
-        'ifa_h': ifa_h,
-        'ifa_l': ifa_l,
-        'ifa_w1': ifa_w1,
-        'ifa_w2': ifa_w2,
-        'ifa_wf': ifa_wf,
-        'ifa_fp': ifa_fp,
-        'ifa_e': ifa_e,
-        'mifa_meander': mifa_meander,
-        'mifa_tipdistance': mifa_tipdistance,
-        'mifa_meander_edge_distance': mifa_meander_edge_distance,
-        'gndplane_position': gndplane_position,
-        'min_size': min_size,
-        'max_size': max_size,
-        "feed_R": feed_R,
-        "min_freq": min_freq,
-        "max_freq": max_freq,
-        "center_freq": center_freq,
-        "fc": fc,
-    }
-    f0 = center_freq
-    fc = parameters["fc"]
+    
 
     create_ga(FDTD, CSX, mesh, parameters)
-
-    via_diameter = 0.3
-    if gndplane_position != 0:
-        feedpoint = -via_diameter  # set feedpoint to groundplane edge
-    else:
-        feedpoint = ifa_wf
 
     port = add_feed(FDTD, CSX, mesh, parameters)
 
     # Finalize the mesh
 
+    Sim_CSX = parameters["Sim_CSX"]
+    
+    
     mesh_res = C0 / (f0 + fc) / unit / 20
     mesh.SmoothMeshLines('all', mesh_res, 1.4)
     nf2ff = FDTD.CreateNF2FFBox()
@@ -680,6 +651,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     CSX_file = os.path.join(Sim_Path, Sim_CSX)
     CSX.Write2XML(CSX_file)
 
+    showCad = parameters.get('showCad', False)
     # Show the structure
     if showCad:
         print("showing cad")
@@ -688,14 +660,16 @@ def ifa_simulation(Sim_CSX='IFA.xml',
         os.system(csxcad_location + ' "{}"'.format(CSX_file))
 
     sim_file = os.path.join(Sim_Path, 'complete_run.flag')
-
+    
+    post_proc_only=parameters.get('post_proc_only', False)
     if not post_proc_only and not os.path.exists(sim_file):
         run_simulation(FDTD, Sim_Path, sim_file, temp_file)
-
+    delete_simulation_files = parameters.get('delete_simulation_files', True)
+    plot = parameters.get('plot', False)
     if os.path.exists(sim_file):
         # Post-processing & plotting
         freq = np.linspace(max(0, f0 - fc), f0 + fc, 501)
-        freq, s11_dB, Zin, P_in = post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, center_freq,
+        freq, s11_dB, Zin, P_in = post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, f0,
                                                        nf2ff, parameters)
 
         return freq, s11_dB, Zin, P_in, hash_prefix
@@ -703,4 +677,4 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
 
 if __name__ == "__main__":
-    ifa_simulation()
+    ga_simulation()
