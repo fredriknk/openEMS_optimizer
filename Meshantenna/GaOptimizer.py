@@ -149,8 +149,8 @@ def evaluate(individual):
             "bandwidth": f"{bandwidth / 1e6:.1f} MHz",
             "params": params_serializable  # Convert array to list
         }
-        # Log the results as a single line of JSON
         log_message = json.dumps(log_data, separators=(',', ':'))
+        # Log the results as a single line of JSON
         logging.info(log_message)
 
     except Exception as e:
