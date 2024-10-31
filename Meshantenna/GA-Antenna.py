@@ -152,7 +152,7 @@ def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickn
     gnd.AddBox(start=start, stop=stop, priority=10)
 
     FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
-    #mesh.AddLine("x",stop+)
+    #mesh.AddLine("x",start)
 
 def find_contiguous_blocks(grid):
     """
@@ -246,7 +246,7 @@ def create_ga(FDTD, CSX, mesh, parameters):
     for i in range(min(num_cells_x, num_cells_y)):
         antenna_grid[i, i] = 1
 
-    antenna_grid[-16:-1,feed_cell_x]=1
+    antenna_grid[-12:-1,feed_cell_x]=1
 
     # Find contiguous blocks in the grid
     blocks = find_contiguous_blocks(antenna_grid)
@@ -269,8 +269,8 @@ def create_ga(FDTD, CSX, mesh, parameters):
         ifa_material.AddBox(start, stop, priority=10)
 
         # Add meshlines to ensure proper meshing
-        #mesh.AddLine('x', [(start[0]+stop[0])/2])
-        #mesh.AddLine('y', [(start[1]+stop[1])/2])
+        mesh.AddLine('x', [start[0], stop[0]])
+        mesh.AddLine('y', [start[1], stop[1]])
 
     FDTD.AddEdges2Grid(dirs='xy', properties=ifa_material)
 
@@ -298,27 +298,43 @@ def add_feed(FDTD, CSX, mesh, parameters):
     start_y = feed_point[1]-cell_size_y/2
     stop_y = feed_point[1]+cell_size_y/2
     start_z = feed_point[2]
-    stop_z = feed_point[2] + substrate_thickness
+
+    if gndplane_position != 0:
+        # Feed connects vertically (z-direction) to the ground plane at z = substrate_thickness + gndplane_position
+        feed_direction = 'z'
+        ground_plane_z = substrate_thickness + gndplane_position
+        stop_z = ground_plane_z
+        start_coord = np.array([start_x, start_y, start_z])
+        stop_coord = np.array([stop_x, stop_y, stop_z])
+    else:
+        # Feed connects horizontally (x-direction) to the ground plane at x = -substrate_width / 2 + ifa_e
+        feed_direction = 'y'
+        ground_plane_x = -substrate_width / 2 + ifa_e
+        #
+        start_coord = np.array([start_x, start_y, start_z])
+        stop_coord = np.array([stop_x, stop_y, start_z])  # z remains the same
+
+    # Add the feed box to the CSX structure
+    #ifa_material.AddBox(start_coord, stop_coord, priority=20)  # Higher priority for meshing
+
+    # Add meshlines along the feed box edges
+    mesh.AddLine('x', [start_coord[0], stop_coord[0]])
+    mesh.AddLine('y', [start_coord[1], stop_coord[1]])
+    mesh.AddLine('z', [start_coord[2], stop_coord[2]])
 
     # Now, add the lumped port between the feed box and the ground plane
     if gndplane_position != 0:
-        feed_direction = 'z'
         # Lumped port is at the bottom face of the feed box in z-direction
-        port_start = np.array([start_x, start_y, start_z])
+        port_start = np.array([start_x, start_y, stop_z])
         port_stop = np.array([stop_x, stop_y, stop_z])
     else:
-        feed_direction = 'y'
-        # Lumped port is at the side face of the feed box in x-direction
+        # Lumped port is at the side face of the feed box in y-direction
         port_start = np.array([start_x, start_y, start_z])
         port_stop = np.array([stop_x, stop_y, start_z])
-        #port_start = np.array([-20, 10, 1.5])
-        #port_stop = np.array([-25, 12, 1.5])
 
-    mesh.AddLine('x', [port_start[0] , port_stop[0]])
-    mesh.AddLine('y', [port_start[1] , port_stop[1]])
     # Add the lumped port to the FDTD simulation
-    port = FDTD.AddLumpedPort(1, feed_R, port_start, port_stop, feed_direction, 1.0, priority=50)
-    #FDTD.AddEdges2Grid
+    port = FDTD.AddLumpedPort(1, feed_R, port_start, port_stop, feed_direction, 1.0, priority=5)
+
     return port
 
 def prepare_simulation_directory(Sim_Path, Sim_CSX, CSX, showCad, csxcad_location):
@@ -500,12 +516,12 @@ def ifa_simulation(Sim_CSX='IFA.xml',
                    substrate_thickness=1.5,
                    gndplane_position=0,
                    substrate_cells=4,
-                   ifa_h=20,
+                   ifa_h=14.054,
                    ifa_l=20,
                    ifa_w1=0.608,
                    ifa_w2=0.400,
                    ifa_wf=0.762,
-                   ifa_fp=1,
+                   ifa_fp=5.368,
                    ifa_e=0.5,
                    mifa_meander=3.0,
                    mifa_tipdistance=2.0,
@@ -652,7 +668,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     temp_file = os.path.join(Sim_Path, 'incomplete_run.flag')
 
     if os.path.exists(Sim_Path):
-        if os.path.exists(temp_file):
+        if os.path.exists(temp_file) or parameters.get('allways_rerun', True):
             import shutil
             print(f"Cleaning up incomplete run: {Sim_Path}")
             shutil.rmtree(Sim_Path)
