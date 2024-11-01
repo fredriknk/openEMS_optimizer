@@ -6,13 +6,13 @@ import logging
 import os 
 from time import time
 import json
-
+from scipy.ndimage import gaussian_filter  # Added for clustering
 
 logpath = 'logs/ga_log800MHZ1800mhztest2.txt'
 bestfitness = 0
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (20, 20)  # Example shape, adjust as needed
+ARRAY_SHAPE = (20, 20)  # Ensure this shape fits your simulation requirements
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -23,25 +23,39 @@ creator.create("Individual", list, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()
 
-import random
+# Remove the old biased attribute function
+# import random
 
-def biased_attr_bool():
-    return random.choices([0, 1], weights=[0.6, 0.4])[0]
+# def biased_attr_bool():
+#     return random.choices([0, 1], weights=[0.6, 0.4])[0]
 
 # Attribute generator for binary elements (0 or 1)
-toolbox.register("attr_bool", biased_attr_bool)
+# toolbox.register("attr_bool", biased_attr_bool)
 
-# Structure initializer for individuals (flattened binary arrays)
-toolbox.register(
-    "individual",
-    tools.initRepeat,
-    creator.Individual,
-    toolbox.attr_bool,
-    n=NUM_ELEMENTS,
-)
+# New: Clustered antenna array generation function
+def generate_clustered_array(array_size=ARRAY_SHAPE, mean=0.5, std_dev=0.3, correlation_length=2, threshold=0.501):
+    # Generate random field
+    random_field = np.random.normal(mean, std_dev, array_size)
+    # Apply Gaussian filter to introduce spatial correlation
+    smoothed_field = gaussian_filter(random_field, sigma=correlation_length)
+    # Threshold the field to create the antenna array
+    antenna_array = smoothed_field > threshold
+    # Convert to int (0 or 1)
+    antenna_array = antenna_array.astype(int)
+    # Flatten the array to 1D
+    flat_antenna_array = antenna_array.flatten()
+    return flat_antenna_array.tolist()
+
+# New: Custom individual initialization function
+def init_clustered_individual():
+    flat_antenna_array = generate_clustered_array()
+    return creator.Individual(flat_antenna_array)
+
+# Register the custom individual initialization function
+toolbox.register("individual", init_clustered_individual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-
+# The rest of your code remains the same
 
 def serialize_data(data):
     if isinstance(data, np.ndarray):
@@ -53,10 +67,9 @@ def serialize_data(data):
     else:
         return data  # Base case: return the item itself if it's already JSON serializable
 
-
 def evaluate(individual):
     starttime = time()
-     # Get the root logger
+    # Get the root logger
     logger = logging.getLogger()
     if not logger.hasHandlers():
         # Configure logging only if not already configured
@@ -65,7 +78,7 @@ def evaluate(individual):
             level=logging.INFO,
             format='%(asctime)s - %(message)s',
             filemode='a'  # Append mode
-    )
+        )
     # Reshape the individual back to the original 2D array shape
     array_2d = np.array(individual).reshape(ARRAY_SHAPE)
 
@@ -115,14 +128,11 @@ def evaluate(individual):
             idx = (np.abs(freq - f)).argmin()
             s11_value = s11_dB[idx]
             s11_at_center.append(s11_value)
-            fitness *= abs(s11_value) if s11_value <= 0 else 1e-6 # Penalize positive S11 values
+            fitness *= abs(s11_value) if s11_value <= 0 else 1e-6  # Penalize positive S11 values
 
         fitness *= -1
-        # round value to 2 decimal places
-
         # bandwidth at xDB
         minS11 = -10
-
 
         impedance = np.real(Zin[idx])
         reactance = np.imag(Zin[idx])
@@ -144,7 +154,6 @@ def evaluate(individual):
         logging.info(log_message)
 
     except Exception as e:
-        
         # In case of simulation failure, assign a high fitness value
         print(f"Simulation failed for individual {individual}: {e}")
         logging.error(f"Simulation failed for individual {individual}: {e}")
@@ -155,8 +164,8 @@ def evaluate(individual):
 toolbox.register("evaluate", evaluate)
 
 # Genetic Algorithm Operators
-toolbox.register("mate", tools.cxTwoPoint)  # Two-point crossover
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)  # Bit-flip mutation
+toolbox.register("mate", tools.cxUniform, indpb=0.1)  # Uniform crossover with low swap probability
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.02)  # Bit-flip mutation with lower probability
 toolbox.register("select", tools.selTournament, tournsize=3)
 
 def optimize_antenna():
@@ -182,7 +191,7 @@ def optimize_antenna():
 
     # Genetic Algorithm parameters
     NGEN = 200  # Number of generations
-    CXPB = 0.8  # Crossover probability
+    CXPB = 0.7  # Crossover probability
     MUTPB = 0.1  # Mutation probability
 
     # Run the Genetic Algorithm
@@ -202,7 +211,7 @@ def optimize_antenna():
     best_array_2d = np.array(best_individual).reshape(ARRAY_SHAPE)
     logging.info("Best 2D Binary Array:")
     logging.info(best_array_2d)
-    logging.info("Best Fitness (S11):", hof[0].fitness.values[0])
+    logging.info(f"Best Fitness (S11): {hof[0].fitness.values[0]}")
 
     return best_array_2d
 
@@ -234,7 +243,6 @@ if __name__ == "__main__":
         'post_proc_only': False,
         'delete_simulation_files': True,
         'antenna_grid': best_array_2d
-        
     }
     freq, s11_dB, Zin, P_in, hash_prefix = ga_simulation(params)
     # Now you can plot or analyze the results as needed

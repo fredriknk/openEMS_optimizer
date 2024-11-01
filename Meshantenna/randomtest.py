@@ -4,7 +4,7 @@ from deap import base, creator, tools
 import matplotlib.pyplot as plt
 
 # Step 1: Define the clustered array generation function
-def generate_clustered_array(array_size=(40, 40), mean=0.5, std_dev=0.3, correlation_length=2, threshold=0.501):
+def generate_clustered_array(array_size=(40, 40), mean=0.5, std_dev=0.3, correlation_length=1, threshold=0.501):
     random_field = np.random.normal(mean, std_dev, array_size)
     smoothed_field = gaussian_filter(random_field, sigma=correlation_length)
     antenna_array = smoothed_field > threshold
