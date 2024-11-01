@@ -7,7 +7,7 @@ import os
 from time import time
 import json
 from scipy.ndimage import gaussian_filter
-
+import math as m
 logpath = 'logs/ga_log800MHZ1800mhztest2.txt'
 
 # Define the shape of the 2D binary array
@@ -182,7 +182,7 @@ def evaluate(individual):
             s11_value = s11_dB[idx]
             s11_at_center.append(s11_value)
             fitness *= abs(s11_value) if s11_value <= 0 else 1e-6
-        
+        fitness = m.sqrt(fitness)   
         fitness *= -1
         
         total_seconds = time() - starttime
