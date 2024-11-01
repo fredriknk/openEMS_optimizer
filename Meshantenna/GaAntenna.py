@@ -14,6 +14,7 @@ Tested with
 from dotenv import load_dotenv
 import os
 import gc
+import psutil
 
 load_dotenv('.env')
 root = os.getenv('rootdir')
@@ -25,8 +26,10 @@ base_path = os.path.abspath(f'runs')
 from datetime import datetime as dt
 from random import randint
 import numpy as np
-import tempfile
+
 import hashlib
+import atexit
+import shutil
 
 from pylab import *
 from CSXCAD import ContinuousStructure
@@ -558,6 +561,7 @@ def mesh_divide(mesh, axes=['x', 'y', 'z'], num_parts=2):
 
         # Set the new lines for the axis
         mesh.SetLines(axis, new_lines)
+        
 def ga_simulation(    parameters = {
         'Sim_CSX' : 'IFA.xml',
         'unit': 1e-3,
@@ -584,6 +588,7 @@ def ga_simulation(    parameters = {
         'delete_simulation_files': True,
         'antenna_grid': makearray(20, 20),
         'numthreads': 4,
+        #'lambdamultiplier': 2,
     }):
     #############################################################################
     #                substrate_width
@@ -643,7 +648,7 @@ def ga_simulation(    parameters = {
         quarter_wavelength = C0 / (f0 - fc) / unit / 4
         lambdamultiplier = parameters['lambdamultiplier']
         SimBox = np.array([lambdamultiplier*quarter_wavelength + substrate_width, lambdamultiplier*quarter_wavelength + (substrate_length + ant_h),
-                           lambdamultiplier*quarter_wavelength + (substrate_length + ant_h)])
+                        lambdamultiplier*quarter_wavelength + (substrate_length + ant_h)])
     else:
         SimBox = np.array([substrate_width * xmultiplier, (substrate_length + 2 * ant_h) * ymultiplier, (substrate_length + 2 * ant_h) * zmultiplier])
     
@@ -725,11 +730,8 @@ def ga_simulation(    parameters = {
         # Post-processing & plotting
         freq = np.linspace(max(0, f0 - fc), f0 + fc, 501)
         freq, s11_dB, Zin, P_in = post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, f0,
-                                                       nf2ff, parameters)
-
+                                                    nf2ff, parameters)
         return freq, s11_dB, Zin, P_in, hash_prefix
-    return None, None, None, None, None
-
 
 if __name__ == "__main__":
     ga_simulation()

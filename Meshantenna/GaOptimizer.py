@@ -11,7 +11,7 @@ import math as m
 logpath = 'logs/ga_log800MHZ1800mhztest2.txt'
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (20, 20)
+ARRAY_SHAPE = (40, 40)
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
