@@ -8,11 +8,11 @@ from time import time
 import json
 
 
-logpath = 'logs/ga_log800MHZ1800mhz.txt'
+logpath = 'logs/ga_log800MHZ1800mhztest2.txt'
 bestfitness = 0
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (40, 40)  # Example shape, adjust as needed
+ARRAY_SHAPE = (20, 20)  # Example shape, adjust as needed
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -73,8 +73,8 @@ def evaluate(individual):
     params = {
         'Sim_CSX' : 'IFA.xml',
         'unit': 1e-3,
-        'substrate_width': 21,
-        'substrate_length': 20,
+        'substrate_width': 25,
+        'substrate_length': 80,
         'substrate_thickness': 1.5,
         'substrate_epsR': 4.5,
         'gndplane_position': 0,
@@ -96,7 +96,11 @@ def evaluate(individual):
         'delete_simulation_files': True,
         'antenna_grid': array_2d,
         'randomhash': random.randint(0, 1000000),
-        'frequencies': [0.8e9,1.5e9,1.8e9]
+        'frequencies': [0.83e9,1.8e9],
+        'xmultiplier': 3,
+        'ymultiplier': 3,
+        'zmultiplier': 3,
+        'lambdamultiplier': 2,
     }
 
     try:
@@ -111,7 +115,7 @@ def evaluate(individual):
             idx = (np.abs(freq - f)).argmin()
             s11_value = s11_dB[idx]
             s11_at_center.append(s11_value)
-            fitness *= abs(s11_value) if s11_value <= 0 else 0 # Penalize positive S11 values
+            fitness *= abs(s11_value) if s11_value <= 0 else 1e-6 # Penalize positive S11 values
 
         fitness *= -1
         # round value to 2 decimal places

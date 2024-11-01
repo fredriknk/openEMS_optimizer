@@ -626,15 +626,29 @@ def ga_simulation(    parameters = {
     ant_h=parameters['ant_h']
     max_timesteps=parameters['max_timesteps']
     unit=parameters['unit']
-    
+    xmultiplier = parameters.get('xmultiplier', 2)
+    ymultiplier = parameters.get('ymultiplier', 2)
+    zmultiplier = parameters.get('zmultiplier', 2)
     # Simulation box size
-    SimBox = np.array([substrate_width * 2, (substrate_length + 2 * ant_h) * 2, (substrate_length + 2 * ant_h) * 2])
+    
+    
     if parameters.get('f0', None) is None:
         f0 = parameters["center_freq"]
     else:
         f0 = parameters["f0"]
     
     fc = parameters["fc"]
+    
+    if parameters.get('lambdamultiplier', None) is not None:
+        quarter_wavelength = C0 / (f0 - fc) / unit / 4
+        lambdamultiplier = parameters['lambdamultiplier']
+        SimBox = np.array([lambdamultiplier*quarter_wavelength + substrate_width, lambdamultiplier*quarter_wavelength + (substrate_length + ant_h),
+                           lambdamultiplier*quarter_wavelength + (substrate_length + ant_h)])
+    else:
+        SimBox = np.array([substrate_width * xmultiplier, (substrate_length + 2 * ant_h) * ymultiplier, (substrate_length + 2 * ant_h) * zmultiplier])
+    
+    
+    
     # Initialize simulation
     FDTD, CSX = initialize_simulation(f0, fc, max_timesteps)
     mesh = CSX.GetGrid()
