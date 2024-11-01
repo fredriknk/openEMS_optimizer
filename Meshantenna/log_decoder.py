@@ -1,7 +1,7 @@
 import json
 from GaAntenna import ga_simulation
 # JSON string (replace this with your actual JSON string)
-json_data = """{"total_seconds":24.84,"fitness":"-0.6647","S11_at_cf":["-0.320","-2.077"],"params":{"Sim_CSX":"IFA.xml","unit":0.001,"substrate_width":25,"substrate_length":80,"substrate_thickness":1.5,"substrate_epsR":4.5,"gndplane_position":0,"substrate_cells":4,"ant_h":14,"ant_l":20,"ant_fp":5,"ant_e":0.5,"feed_R":50,"min_freq":830000000.0,"center_freq":1500000000.0,"max_freq":1800000000.0,"fc":800000000.0,"max_timesteps":20000,"override_min_global_grid":null,"plot":false,"showCad":false,"post_proc_only":false,"delete_simulation_files":true,"antenna_grid":[[1,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1],[1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1],[1,1,1,0,0,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1],[1,1,1,0,0,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1],[1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1],[0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1],[0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1],[0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1],[0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1],[0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1],[0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],[0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"randomhash":73364,"frequencies":[830000000.0,1800000000.0],"xmultiplier":3,"ymultiplier":3,"zmultiplier":3,"lambdamultiplier":2,"cell_size_x":1.0,"cell_size_y":0.7,"feed_point":[-6.5,39.85,1.5]}}"""
+json_data = """{"total_seconds":25.12,"fitness":"-1.53765","S11_at_cf":["-0.499","-3.079"],"std_dev":"0.511","correlation_length":"4.486","threshold":"0.531","params":{"Sim_CSX":"IFA.xml","unit":0.001,"substrate_width":25,"substrate_length":80,"substrate_thickness":1.5,"substrate_epsR":4.5,"gndplane_position":0,"substrate_cells":4,"ant_h":14,"ant_l":24,"ant_fp":5,"ant_e":0.5,"feed_R":50,"min_freq":830000000.0,"center_freq":1500000000.0,"max_freq":1800000000.0,"fc":800000000.0,"max_timesteps":20000,"override_min_global_grid":null,"plot":false,"showCad":false,"post_proc_only":false,"delete_simulation_files":true,"antenna_grid":[[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1],[1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"randomhash":816186,"frequencies":[830000000.0,1800000000.0],"numThreads":4,"xmultiplier":3,"ymultiplier":3,"zmultiplier":3,"lambdamultiplier":2,"cell_size_x":1.2,"cell_size_y":0.7,"feed_point":[-6.6000000000000005,39.85,1.5]}}"""
 
 # Parse the JSON data
 parsed_data = json.loads(json_data)
@@ -36,12 +36,12 @@ def deserialize_data(data):
         return data
 
 
-params["plot"] = False  # Set the plot parameter to True
+params["plot"] = True  # Set the plot parameter to True
 params["showCad"] = True  # Set the showCad parameter to True
-params["post_proc_only"] = True  # Set the post_proc_only parameter to False
+params["post_proc_only"] = False  # Set the post_proc_only parameter to False
 params["antenna_grid"] = np.array(deserialize_data(antenna_grid))  # Update the antenna grid parameter
 params["max_timesteps"] = 120000  # Update the max_timesteps parameter
-params["numthreads"] = 0  # Add a new parameter numthreads
+#params["numthreads"] = 0  # Add a new parameter numthreads
 #params['mesh_divide']= 3 # Add a new parameter mesh_divide
 #params["override_min_global_grid"] = 0.25  # Set the override_min_global_grid parameter to None
 ga_simulation(parameters=params)  # Call the simulation function with the parsed parameters
