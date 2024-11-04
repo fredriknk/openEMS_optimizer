@@ -223,8 +223,8 @@ def lte():
     post_proc_only = False
 
     unit = 1e-3
-    substrate_width = 90
-    substrate_length = 90
+    substrate_width = 25
+    substrate_length = 80
     substrate_thickness = 1.5
     gndplane_position = -0.36
     substrate_cells = 4
