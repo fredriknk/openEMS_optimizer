@@ -3,9 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from deap import base, creator, tools, algorithms
+from scipy.ndimage import convolve
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (40, 40)
+ARRAY_SHAPE = (20, 20)
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -39,23 +40,70 @@ MUTPB = 0.2     # Mutation probability
 BLOCK_SIZE = (5, 5)  # Size of the block for crossover and mutation
 
 
-def generate_clustered_array(array_size=(40, 40), std_dev_range = (0.2, 0.25),  correlation_length_range = (2, 5.0), threshold_range = (0.49, 0.52)):
+def generate_clustered_array(array_size=(20, 20), p_zero=0.5, seed=None):
     """
-    Generate a clustered binary array using Gaussian smoothing.
-    """
-    mean = 0.5
-    std_dev = random.uniform(*std_dev_range)
-    correlation_length = random.uniform(*correlation_length_range)
-    threshold = random.uniform(*threshold_range)
+    Generates a 2D grid of 0s and 1s where each 1 has at least one orthogonal neighboring 1.
     
-    random_field = np.random.normal(mean, std_dev, array_size)
-    smoothed_field = gaussian_filter(random_field, sigma=correlation_length)
-    antenna_array = smoothed_field > threshold
-    antenna_array = antenna_array.astype(int)
-    flat_antenna_array = antenna_array.flatten()
-    return flat_antenna_array.tolist()
+    Args:
+        array_size (tuple of int, optional): Size of the grid as (rows, cols). Defaults to (40, 40).
+        p_zero (float, optional): Probability of a cell being 0. Must be between 0 and 1. Defaults to 0.5.
+        seed (int, optional): Seed for the random number generator for reproducibility. Defaults to None.
+    
+    Returns:
+        list of int: Flattened 1D list representing the 2D grid with no isolated 1s.
+    
+    Raises:
+        ValueError: If p_zero is not between 0 and 1.
+    """
+    rows, cols = array_size
+    p_one = 1 - p_zero  # Probability of a cell being 1
+    
+    # Validate probabilities
+    if not (0 <= p_zero <= 1) or not (0 <= p_one <= 1):
+        raise ValueError("p_zero and p_one must be between 0 and 1.")
+    
+    # Seed the random number generators for reproducibility
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+    
+    # Step 1: Generate the initial grid with 0s and 1s based on probabilities
+    grid = np.array([
+        [random.choices([0, 1], weights=[p_zero, p_one])[0] for _ in range(cols)]
+        for _ in range(rows)
+    ])
+    
+    # Step 2: Define the convolution kernel to count orthogonal neighbors only
+    kernel = np.array([
+        [1, 1, 1],
+        [1, 0, 1],
+        [1, 1, 1]
+    ])
+    
+    # Step 3: Convolve the grid with the kernel to count the number of orthogonal 1s around each cell
+    neighbor_count = convolve(grid, kernel, mode='constant', cval=0)
+    
+    # Step 4: Identify isolated 1s (1s with no orthogonal neighboring 1s)
+    isolated = (grid == 1) & (neighbor_count == 0)
+    
+    # Step 5: Set isolated 1s to 0
+    grid[isolated] = 0
+    
+    # Optional: Repeat the process to remove any new isolated 1s resulting from previous removals
+    # This ensures that all 1s have at least one orthogonal neighbor
+    # Uncomment the following lines if multiple passes are necessary
+    while True:
+        neighbor_count = convolve(grid, kernel, mode='constant', cval=0)
+        new_isolated = (grid == 1) & (neighbor_count == 0)
+        if not new_isolated.any():
+            break
+        grid[new_isolated] = 0
+    
+    # Flatten the 2D grid to a 1D list and return
+    flat_antenna_array = grid.flatten().tolist()
+    return flat_antenna_array
 
-def init_individual():
+def init_full_individual():
     """
     Initialize an individual with a clustered antenna array.
     """
@@ -64,91 +112,14 @@ def init_individual():
     )
     return creator.Individual(antenna_elements)
 
-toolbox.register("individual", init_individual)
+toolbox.register("individual", init_full_individual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 from scipy.ndimage import gaussian_filter
 import numpy as np
 
-def smoothed_mean_crossover(parent1, parent2, sigma=1.0, threshold=0.5):
-    """
-    Perform smoothed mean crossover between two parents.
-    Applies Gaussian blur to both, averages them, thresholds to produce binary children,
-    and returns two new child individuals without modifying the parents.
-    
-    Args:
-        parent1 (list): First parent individual (list of 0s and 1s).
-        parent2 (list): Second parent individual (list of 0s and 1s).
-        sigma (float): Standard deviation for Gaussian blur.
-        threshold (float): Threshold for binarization.
-        
-    Returns:
-        tuple: Two new child individuals (lists of 0s and 1s).
-    """
-    # Ensure that ARRAY_SHAPE is defined globally or pass it as a parameter
-    global ARRAY_SHAPE  # Replace with parameter if preferred
-    
-    # Reshape parents into 2D arrays
-    array1 = np.array(parent1).reshape(ARRAY_SHAPE)
-    array2 = np.array(parent2).reshape(ARRAY_SHAPE)
-    
-    # Apply Gaussian blur to both arrays
-    r = random.random()
-    ri = 1.-r
-    
-    blurred1 = gaussian_filter(array1.astype(float), sigma=sigma)*r
-    blurred2 = gaussian_filter(array2.astype(float), sigma=sigma)*ri
-    
-    r1 = random.random()
-    ri1 = 1.-r1
-    
-    blurred3 = gaussian_filter(array1.astype(float), sigma=sigma)*r1
-    blurred4 = gaussian_filter(array2.astype(float), sigma=sigma)*ri1
-    
-    # Average the blurred arrays
-    averaged = (blurred1 + blurred2) / 2.0
-    averaged2 = (blurred3 + blurred4) / 2.0
-    # Threshold the averaged array to obtain binary children
-    binary_child = (averaged > threshold*random.random()).astype(int)
-    binary_child2 = (averaged2 > threshold*random.random()).astype(int)
-    # Flatten the 2D array back to a 1D list
-    child1 = binary_child.flatten().tolist()
-    child2 = binary_child2.flatten().tolist()  # Both children are identical in this approach
-    
-    # Alternatively, to introduce slight variations between children, you can add small noise
-    # Uncomment the following lines to apply random perturbations to child2
-    # noise = np.random.normal(0, 0.05, binary_child.shape)
-    # averaged_with_noise = averaged + noise
-    # binary_child2 = (averaged_with_noise > threshold).astype(int)
-    # child2 = binary_child2.flatten().tolist()
-    
-    return child1, child2
-
-def block_mutation(individual, block_size=(5,5), indpb=0.1):
-    """
-    Perform block-based mutation on an individual.
-    """
-    # Determine the number of blocks
-    n_blocks_row = ARRAY_SHAPE[0] // block_size[0]
-    n_blocks_col = ARRAY_SHAPE[1] // block_size[1]
-    
-    # Choose a random block to mutate
-    block_row = random.randint(0, n_blocks_row - 1)
-    block_col = random.randint(0, n_blocks_col - 1)
-    
-    # Calculate start and end indices
-    start_idx = block_row * block_size[0] * ARRAY_SHAPE[1] + block_col * block_size[1]
-    end_idx = start_idx + block_size[0] * ARRAY_SHAPE[1]
-    
-    # Flip bits in the block with probability indpb
-    for i in range(start_idx, end_idx):
-        if random.random() < indpb:
-            individual[i] = 1 - individual[i]
-    
-    return (individual,)
-
-toolbox.register("mate", smoothed_mean_crossover)
-toolbox.register("mutate", block_mutation, block_size=BLOCK_SIZE, indpb=0.2)
+toolbox.register("mate", tools.cxTwoPoint)  # Two-point crossover
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)  # Bit-flip mutation
 toolbox.register("select", tools.selTournament, tournsize=3)
 
 # Evaluation function (dummy example)
@@ -209,10 +180,13 @@ def main():
     
     #mate the two individuals
     child1, child2 = toolbox.mate(copy_ind1, copy_ind2)
-
-    visualize_individuals([ind1, ind2, child1, child2],
-                            ["Parent 1", "Parent 2", "Child 1", "Child 2"],
-                            layout=(2, 2))
+    mutant1 = toolbox.mutate(toolbox.clone(child1))
+    mutant2 = toolbox.mutate(toolbox.clone(child2))
+    child12,child22 = toolbox.mate(copy_ind1, copy_ind2)    
+    visualize_individuals([copy_ind1, child1, mutant1,child12, copy_ind2, child2, mutant2, child22],
+                            ["Parent 1", "Child 1", "Mutant 1","Child 12", "Parent 2", "Child 2", "Mutant 2", "Child 22"],
+                            layout=(2, 4))
+    
     
 # call main function
 if __name__ == "__main__":
