@@ -19,7 +19,7 @@ root = os.getenv('rootdir')
 csxcad_location= os.getenv('csxcad_location')
 os.add_dll_directory(root)
 
-base_path=os.path.abspath(f'runs')
+base_path=os.path.abspath(f'..\\runs')
 
 from datetime import datetime as dt
 from random import randint
@@ -679,7 +679,8 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     Sim_Path = os.path.join(base_path, f'tmp_IFA_{hash_prefix}')
 
     # Simulation box size
-    SimBox = np.array([substrate_width * 2, (substrate_length+2*ifa_h) * 2, 150])
+    lambda4 = C0 / (f0 - fc)/ unit / 4
+    SimBox = np.array([substrate_width +lambda4*2, (substrate_length+2*ifa_h) +lambda4*2, substrate_thickness+lambda4*2])
 
     # Initialize simulation
     FDTD, CSX = initialize_simulation(f0, fc, max_timesteps)
