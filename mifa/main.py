@@ -228,14 +228,14 @@ def lte():
     substrate_thickness = 1.5
     gndplane_position = -0.36
     substrate_cells = 4
-    ifa_h = 13
-    ifa_l = 70
-    ifa_w1 = 1
-    ifa_w2 = 1
-    ifa_wf = 1
-    ifa_fp = 6
-    ifa_e = 0.5
-    mifa_meander=2.5
+    ifa_h = 16
+    ifa_l = 180
+    ifa_w1 = 2
+    ifa_w2 = 0.5
+    ifa_wf = 0.5
+    ifa_fp = 4.5
+    ifa_e = 0.3
+    mifa_meander=1.5
     mifa_tipdistance=3.0
     mifa_meander_edge_distance=3.0
     substrate_epsR = 4.5
@@ -244,9 +244,9 @@ def lte():
     center_freq = 0.83e9
     max_freq = 0.87e9
     fc = 0.83e9-0.5e9
-    min_size = 0.50 # minimum automesh size
+    min_size = 0.30 # minimum automesh size
     override_min_global_grid = None #none if not override
-    max_timesteps = 800000
+    max_timesteps = 120000
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
