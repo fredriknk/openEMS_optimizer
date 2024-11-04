@@ -90,7 +90,7 @@ def evaluate(individual):
         'substrate_epsR': 4.5,
         'gndplane_position': 0,
         'substrate_cells': 4,
-        'ant_h': 14,
+        'ant_h': 24.5,
         'ant_l': 24.5,
         'ant_fp': 5,
         'ant_e': 0.5,
@@ -109,9 +109,6 @@ def evaluate(individual):
         'randomhash': random.randint(0, 1000000),
         'frequencies': [0.83e9, 1.8e9],
         'numThreads': 4,
-        'xmultiplier': 3,
-        'ymultiplier': 3,
-        'zmultiplier': 3,
         'lambdamultiplier': 2,
     }
     
