@@ -8,10 +8,10 @@ from time import time
 import json
 from scipy.ndimage import gaussian_filter
 import math as m
-logpath = 'logs/ga_log800MHZ1800mhztest2.txt'
+logpath = 'logs/ga_log800MHZ1800mhztest4.txt'
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (40, 40)
+ARRAY_SHAPE = (20, 20)
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -95,14 +95,14 @@ def evaluate(individual):
         'ant_fp': 5,
         'ant_e': 0.5,
         'feed_R': 50,
-        'min_freq': 0.83e9,
+        'min_freq': 0.8e9,
         'center_freq': 1.3e9,
         'max_freq': 1.8e9,
-        'fc': 1e9,
+        'fc': 0.7e9,
         'max_timesteps': 20000,
         'override_min_global_grid': None,
-        'plot': True,
-        'showCad': True,
+        'plot': False,
+        'showCad': False,
         'post_proc_only': False,
         'delete_simulation_files': True,
         'antenna_grid': array_2d,
