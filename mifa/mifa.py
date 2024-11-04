@@ -70,8 +70,8 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
         mid_index = len(meshlines[axis]) // 2
         #if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > max_size:
         #    meshlines[axis].insert(mid_index, center)
-        if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > length/2:
-            meshlines[axis].insert(mid_index, center)
+        #if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > length/2:
+        #    meshlines[axis].insert(mid_index, center)
 
 def extend_line(start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
     # Calculate the total range for each dimension
@@ -87,11 +87,13 @@ def extend_line(start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
         center = (startpoint+stoppoint)/2
         length = startpoint-stoppoint
         retries = 0
-        generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size, length, meshlines)
-
-
+        #generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size, length, meshlines)
+        meshlines[axis] = [start[axis],stop[axis]]
     return meshlines
 
+def getstartstops(primitives, start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
+    primitive = [start,stop]
+    primitives.append(primitive)
 def initialize_simulation(f0, fc, max_timesteps):
     """
     Initialize the FDTD and CSX structures.
@@ -173,7 +175,7 @@ def create_ifa(CSX, mesh, parameters):
     # Create IFA
     ifa = CSX.AddMetal('ifa')
     tl = np.array([-substrate_width/2+ifa_e+ifa_fp, substrate_length / 2 - ifa_e, substrate_thickness])  # translation vector
-    via_diameter=0.3
+    via_diameter=0.5
     if gndplane_position != 0:
         print(f"offset groundplane, add vias")
         feedpoint = -via_diameter #set feedpoint to groundplane edge
@@ -186,8 +188,8 @@ def create_ifa(CSX, mesh, parameters):
     stop = start + np.array([ifa_wf, ifa_h - feedpoint, 0])
     ifa.AddBox(start=start, stop=stop, priority=10)
     meshlines = extend_line(start, stop, min_size, max_size)
-    #mesh.AddLine('x',meshlines[0] )
-    #mesh.AddLine('y', meshlines[1])
+    mesh.AddLine('x',meshlines[0] )
+    mesh.AddLine('y', meshlines[1])
 
     # Short circuit stub
     start = np.array([-ifa_fp, -short_circuit_stub, 0]) + tl
@@ -195,14 +197,16 @@ def create_ifa(CSX, mesh, parameters):
     ifa.AddBox(start=start, stop=stop, priority=10)
 
     meshlines = extend_line(start, stop,min_size,max_size)
-    #mesh.AddLine('x',meshlines[0] )
-    #mesh.AddLine('y', meshlines[1])
+    mesh.AddLine('x',meshlines[0] )
+    mesh.AddLine('y', meshlines[1])
 
     if gndplane_position != 0:
         #Add Via to groundplane
         start =start+np.array([+ifa_w1/2,+via_diameter/2,0])
         stop = start+np.array([0,0,gndplane_position])
         ifa.AddCylinder(start,stop,via_diameter/2,priority=10)
+        mesh.AddLine('x',start[0])
+        mesh.AddLine('y',start[1])
 
         start = stop+np.array([-via_diameter/2,+via_diameter/2,0])
         stop = start + np.array([via_diameter, via_diameter,-gndplane_position])
@@ -253,8 +257,8 @@ def create_ifa(CSX, mesh, parameters):
             stop = start + np.array([-ifa_w2, -max_edgelength_tip-ifa_w2, 0])
             ifa.AddBox(start=start, stop=stop, priority=10)
             meshlines = extend_line(start, stop,min_size,max_size)
-            #mesh.AddLine('x',meshlines[0] )
-            #mesh.AddLine('y', meshlines[1])
+            mesh.AddLine('x',meshlines[0] )
+            mesh.AddLine('y', meshlines[1])
             length_diff -= max_edgelength_tip
             print("Adding tip element{max_edgelength_tip}")
 
@@ -420,6 +424,53 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
         print(f"meshlines {axis} after filtering: {mesh.GetLines(axis)}")
 
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
+
+
+    adjusted_lines_dict = {}
+    max_factor = 1.5
+
+    for axis in ['x', 'y', 'z']:
+        lines = mesh.GetLines(axis)
+        print(f"Mesh lines {axis} before adjusting: {lines}")
+
+        # Sort the lines to ensure they are in ascending order
+        sorted_lines = sorted(lines)
+
+        if not sorted_lines:
+            adjusted_lines_dict[axis] = []
+            print(f"No lines present for axis {axis}.\n")
+            continue
+
+        # Initialize the adjusted list with the first line
+        adjusted_lines = [sorted_lines[0]]
+
+        if len(sorted_lines) == 1:
+            # Only one line exists; no distance comparisons needed
+            adjusted_lines_dict[axis] = adjusted_lines
+            print(f"Only one line present for axis {axis}. No adjustments needed.\n")
+            continue
+
+        # Calculate the initial distance between the first two lines
+        prev_distance = sorted_lines[1] - sorted_lines[0]
+        adjusted_lines.append(sorted_lines[1])
+        print(f"Initial distance for axis {axis}: {prev_distance}")
+
+        # Iterate through the remaining lines
+        for current_line in sorted_lines[2:]:
+            second_last_adjusted_line = adjusted_lines[-2]
+            last_adjusted_line = adjusted_lines[-1]
+            current_distance = current_line - last_adjusted_line
+            adjusted_lines.append(current_line)
+            if current_distance > prev_distance * max_factor and prev_distance >= min_size:
+                adjusted_lines.append(last_adjusted_line + current_distance / 2)
+                #adjusted_lines.append(last_adjusted_line + 2*current_distance / 3)
+            print(f"Added original line {current_line} to axis {axis}. Current distance: {current_distance}")
+            prev_distance = current_distance
+
+        mesh.SetLines(axis, adjusted_lines)
+        print(f"Mesh lines {axis} after adjusting: {adjusted_lines}\n")
+
+
     # Add the nf2ff recording box
     return mesh
 
@@ -726,7 +777,7 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Apply the excitation & resistor as a current source
     tl = np.array([-substrate_width/2+ifa_e+ifa_fp, substrate_length / 2 - ifa_e, substrate_thickness])  # translation vector
-    via_diameter=0.3
+    via_diameter=0.5
     if gndplane_position != 0:
         feedpoint = -via_diameter #set feedpoint to groundplane edge
     else:
@@ -736,7 +787,25 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Finalize the mesh
     nf2ff = FDTD.CreateNF2FFBox()
+
+
     finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, {"x": [], "y": [], "z": [0, substrate_thickness+gndplane_position,substrate_thickness]})
+
+    # primitives=CSX.GetAllPrimitives()
+    # mesh.SetLines("x", [0,1])
+    # mesh.SetLines("y", [0,1])
+    # mesh.SetLines("z", [0,1])
+    # for primitive in primitives:
+    #     print(f"Primitive: {primitive}")
+    #     bounding_box=primitive.GetBoundBox()
+    #     print(f"Bounding box: {bounding_box}")
+    #     mesh.AddLine("x",bounding_box[0][0])
+    #     mesh.AddLine("x", bounding_box[1][0])
+    #     mesh.AddLine("y", bounding_box[0][1])
+    #     mesh.AddLine("y", bounding_box[1][1])
+    #     mesh.AddLine("z", bounding_box[0][2])
+    #     mesh.AddLine("z", bounding_box[1][2])
+
 
     temp_file = os.path.join(Sim_Path, 'incomplete_run.flag')
 
