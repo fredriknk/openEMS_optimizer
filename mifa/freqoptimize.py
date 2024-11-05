@@ -46,29 +46,30 @@ def evaluation_fun(x, variable_names, fixed_params):
     showCad = False
     post_proc_only = False
     unit = 1e-3
-    substrate_width = 21
-    substrate_length = 30
+    substrate_width = 25.5
+    substrate_length = 108
     substrate_thickness = 1.5
     gndplane_position = -0.36
     substrate_cells = 4
-    ifa_h = 5.500
-    ifa_l = 23
-    ifa_w1 = 1
-    ifa_w2 = 1
-    ifa_wf = 1
-    ifa_fp = 5.000
+    #ifa_h = 16
+    #ifa_l = 200
+    #ifa_w1 = 2
+    #ifa_w2 = 0.5
+    #ifa_wf = 0.5
+    #ifa_fp = 4.5
     ifa_e = 0.5
-    mifa_meander=2
-    mifa_tipdistance=2.0
-    mifa_meander_edge_distance=2.0
+    mifa_meander=1.5
+    mifa_tipdistance=1.5
+    mifa_meander_edge_distance=1.5
     substrate_epsR = 4.5
     feed_R = 50
-    min_freq = 2.4e9
-    center_freq = 2.45e9
-    max_freq = 2.5e9
-    min_size = 0.2 # minimum automesh size
-    override_min_global_grid = 1.2 #none if not override
-    max_timesteps = 600000
+    min_freq = 0.78e9
+    center_freq = 0.83e9
+    max_freq = 0.87e9
+    fc = 0.83e9-0.7e9
+    min_size = 0.30 # minimum automesh size
+    override_min_global_grid = None #none if not override
+    max_timesteps = 220000
     plot = False
     cleanup = False
     
@@ -77,7 +78,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     if not logger.hasHandlers():
         # Configure logging only if not already configured
         logging.basicConfig(
-            filename='logs/diffevolution_log_new.txt',
+            filename='logs/diffevolution_log_new_2.txt',
             level=logging.INFO,
             format='%(asctime)s - %(message)s',
             filemode='a'  # Append mode
@@ -100,13 +101,12 @@ def evaluation_fun(x, variable_names, fixed_params):
         logger.debug(f"{key}: {value}, type: {type(value)}")
 
     # Extract parameters
-    ifa_h = params['ifa_h']
     ifa_l = params['ifa_l']
+    ifa_h = params['ifa_h']
     ifa_fp = params['ifa_fp']
     ifa_w1 = params['ifa_w1']
     ifa_w2 = params['ifa_w2']
     ifa_wf = params['ifa_wf']
-    center_freq = 2.45e9  # Center frequency for S11 evaluation
     # Constants for the simulation (as per your original code)
     # ...
 
@@ -134,6 +134,7 @@ def evaluation_fun(x, variable_names, fixed_params):
                                                 feed_R=feed_R,
                                                 min_freq=min_freq,
                                                 center_freq=center_freq,
+                                                fc=fc,
                                                 max_freq=max_freq,
                                                 min_size=min_size,
                                                 override_min_global_grid=override_min_global_grid,
@@ -141,6 +142,7 @@ def evaluation_fun(x, variable_names, fixed_params):
                                                 plot=plot,
                                                 delete_simulation_files=cleanup)
         # Get the S11 value at the center frequency
+        
         idx = np.argmin(np.abs(freq - center_freq))
         s11_value = s11_dB[idx]
         # round value to 2 decimal places
@@ -203,7 +205,7 @@ if __name__ == "__main__":
 
     # Configure logging once in the main process
     logging.basicConfig(
-        filename='logs/diffevolution_log_new.txt',
+        filename='logs/diffevolution_log_new_2.txt',
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         filemode='a'  # Append mode
@@ -211,26 +213,27 @@ if __name__ == "__main__":
 
     # Fixed parameters
     fixed_params = {
-        'ifa_l': 23,  # Initial value
-        'ifa_h': 5.5,
-        'ifa_fp': 5,
-        'ifa_w1': 1,
-        'ifa_w2': 1.,
-        'ifa_wf': 1,
+        'ifa_l': 130,  # Initial value
+        'ifa_h': 16,
+        'ifa_fp': 2,
+        'ifa_w1': 0.5,
+        'ifa_w2': 0.5,
+        'ifa_wf': 0.5,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (17, 30),
-        'ifa_h': (4., 10.0),
-        'ifa_fp': (4.0, 7),
-        'ifa_w1': (0.5, 3),
-        'ifa_w2': (0.4, 1.5),
-        'ifa_wf': (0.4, 1.5)
+        'ifa_l': (60, 190),
+        'ifa_h': (12, 20),
+        'ifa_fp': (2, 4),
+        #'ifa_w1': (0.4, 3),
+        #'ifa_w2': (0.4, 0.6),
+        #'ifa_wf': (0.4, 0.6)
     }
 
-    # Variables to optimize
-    variable_names = [ 'ifa_w1', 'ifa_l','ifa_w2','ifa_wf','ifa_fp','ifa_h']  # List variables you want to optimize
+    # Variables to optimize from variable_bounds
+    variable_names = list(variable_bounds.keys())   
+    #variable_names = [ 'ifa_l',"ifa_h"]#,'ifa_fp', 'ifa_w1','ifa_w2','ifa_wf']  # List variables you want to optimize
     bounds = [variable_bounds[var_name] for var_name in variable_names]
 
     logging.info(f"start diff evolution, bounds: {bounds}, fixed_params: {fixed_params}")
@@ -251,12 +254,11 @@ if __name__ == "__main__":
         strategy='best1bin',
         maxiter=1000,
         popsize=5,
-        tol=0.01,
+        tol=0.1,
         mutation=(0.5, 1),
         recombination=0.7,
         disp=True,
         polish=True,
-        workers=3,
         init=init_pop if init_pop is not None else 'random'
     )
 

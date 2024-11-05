@@ -8,10 +8,10 @@ from time import time
 import json
 from scipy.ndimage import gaussian_filter
 import math as m
-logpath = 'logs/ga_log800MHZ1800mhztest4.txt'
+logpath = 'logs/ga_log800MHZ1800mhztest5.txt'
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (20, 20)
+ARRAY_SHAPE = (40, 20)
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -90,7 +90,7 @@ def evaluate(individual):
         'substrate_epsR': 4.5,
         'gndplane_position': 0,
         'substrate_cells': 4,
-        'ant_h': 24.5,
+        'ant_h': 45,
         'ant_l': 24.5,
         'ant_fp': 5,
         'ant_e': 0.5,

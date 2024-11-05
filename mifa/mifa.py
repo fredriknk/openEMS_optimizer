@@ -19,7 +19,7 @@ root = os.getenv('rootdir')
 csxcad_location= os.getenv('csxcad_location')
 os.add_dll_directory(root)
 
-base_path=os.path.abspath(f'..\\runs')
+base_path=os.path.abspath(f'runs')
 
 from datetime import datetime as dt
 from random import randint
@@ -214,6 +214,7 @@ def create_ifa(CSX, mesh, parameters):
         mesh.AddLine('x', meshlines[0])
         mesh.AddLine('y', meshlines[1])
         mesh.AddLine('z', meshlines[2])
+        #mesh.AddLine('z', [(substrate_thickness+gndplane_position/2)])
 
     # Radiating element
     if ifa_l < substrate_width-2*ifa_e:
