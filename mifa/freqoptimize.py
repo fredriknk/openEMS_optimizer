@@ -4,8 +4,11 @@ import numpy as np
 import os
 import pickle
 from scipy.optimize import differential_evolution
+from datetime import datetime
 
+time_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") 
 
+logname = f"logs/diffevolution_log_{time_now}.txt"
 # Function to save the state of the differential evolution
 def save_state(filename, state):
     with open(filename, 'wb') as f:
@@ -32,7 +35,7 @@ def save_callback(xk, convergence):
     return False  # Returning False allows the optimization to continue
 
 
-def evaluation_fun(x, variable_names, fixed_params):
+def evaluation_fun(x, variable_names, fixed_params,logname):
     import logging
     import os
     import numpy as np
@@ -60,7 +63,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     ifa_e = 0.5
     mifa_meander=1.5
     mifa_tipdistance=1.5
-    mifa_meander_edge_distance=1.5
+    #mifa_meander_edge_distance=1.5
     substrate_epsR = 4.5
     feed_R = 50
     min_freq = 0.78e9
@@ -78,7 +81,7 @@ def evaluation_fun(x, variable_names, fixed_params):
     if not logger.hasHandlers():
         # Configure logging only if not already configured
         logging.basicConfig(
-            filename='logs/diffevolution_log_new_2.txt',
+            filename=logname,
             level=logging.INFO,
             format='%(asctime)s - %(message)s',
             filemode='a'  # Append mode
@@ -107,6 +110,9 @@ def evaluation_fun(x, variable_names, fixed_params):
     ifa_w1 = params['ifa_w1']
     ifa_w2 = params['ifa_w2']
     ifa_wf = params['ifa_wf']
+    mifa_meander_edge_distance=params['mifa_meander_edge_distance']
+    mifa_tipdistance=mifa_meander_edge_distance
+    
     # Constants for the simulation (as per your original code)
     # ...
 
@@ -179,9 +185,10 @@ def evaluation_fun(x, variable_names, fixed_params):
         # Log parameters and objective function values
         log_message = (
             f"total seconds: {total_seconds:.2f}, "
+            f"S11 at cf: {s11_value:.4f}, Imp: {impedance:.1f}R {reactance:.1f}z, "
             f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, "
             f"ifa_w1: {ifa_w1:.3f}, ifa_w2: {ifa_w2:.3f}, ifa_wf: {ifa_wf:.3f}, "
-            f"S11 at cf: {s11_value:.4f}, Imp: {impedance:.1f}R {reactance:.1f}z, "
+            f"mifa_meander_edge_distance: {mifa_meander_edge_distance:.3f}, "
             f"Res f: {f_res / 1e9:.3f} GHz, S11 at res: {s_11_min:.3f}, "
             f"BW1: {first_crossing / 1e9:.2f} GHz, BW2: {last_crossing / 1e9:.2f} GHz, "
             f"BW = {bandwidth / 1e6:.1f} MHz - id {hash_prefix}"
@@ -205,7 +212,7 @@ if __name__ == "__main__":
 
     # Configure logging once in the main process
     logging.basicConfig(
-        filename='logs/diffevolution_log_new_2.txt',
+        filename=logname,
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         filemode='a'  # Append mode
@@ -213,22 +220,24 @@ if __name__ == "__main__":
 
     # Fixed parameters
     fixed_params = {
-        'ifa_l': 130,  # Initial value
-        'ifa_h': 16,
-        'ifa_fp': 2,
-        'ifa_w1': 0.5,
-        'ifa_w2': 0.5,
-        'ifa_wf': 0.5,
+        'ifa_l': 139.897,  # Initial value
+        'ifa_h': 12.486,
+        'ifa_fp': 3.049,
+        'ifa_w1': 0.6,
+        'ifa_w2': 0.6,
+        'ifa_wf': 0.6,
+        "mifa_meander_edge_distance":1.5,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (60, 190),
-        'ifa_h': (12, 20),
-        'ifa_fp': (2, 4),
-        #'ifa_w1': (0.4, 3),
-        #'ifa_w2': (0.4, 0.6),
-        #'ifa_wf': (0.4, 0.6)
+        'ifa_l': (135, 145),
+        'ifa_h': (11, 16),
+        'ifa_fp': (2.9, 3.1),
+        'ifa_w1': (0.4, 2.5),
+        'ifa_w2': (0.4, 0.6),
+        'ifa_wf': (0.4, 0.6),
+        "mifa_meander_edge_distance": (1.4, 3),
     }
 
     # Variables to optimize from variable_bounds
@@ -250,10 +259,10 @@ if __name__ == "__main__":
     optimizer = differential_evolution(
         evaluation_fun,
         bounds,
-        args=(variable_names, fixed_params),
+        args=(variable_names, fixed_params,logname),
         strategy='best1bin',
         maxiter=1000,
-        popsize=5,
+        popsize=7,
         tol=0.1,
         mutation=(0.5, 1),
         recombination=0.7,
