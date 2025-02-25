@@ -25,7 +25,7 @@ toolbox = base.Toolbox()
 
 def init_full_individual():
     # Initialize antenna elements with all ones
-    individual = [1 for _ in range(NUM_ELEMENTS)]
+    individual = [random.randint(0, 1) for _ in range(NUM_ELEMENTS)]
     #make it random if the corner elements are random
     individual[0] = random.randint(0, 1)
     individual[ARRAY_SHAPE[0] - 1] = random.randint(0, 1)
@@ -42,7 +42,7 @@ def mutate_individual(individual):
     # Mutate antenna elements
     # randomly flip 0.5% of the bits
     for i in range(NUM_ELEMENTS):
-        if random.random() < 0.01:
+        if random.random() < 0.005:
             individual[i] = 1 - individual[i]
     return (individual,)
 
@@ -50,8 +50,8 @@ def mutate_individual(individual):
 toolbox.register("individual", init_full_individual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 #use single point crossover
-toolbox.register("mate", tools.cxOnePoint)
-toolbox.register("mutate", mutate_individual)
+toolbox.register("mate", tools.cxUniform)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
 def serialize_data(data):
@@ -78,7 +78,6 @@ def evaluate(individual):
     # Extract antenna elements and clustering parameters
     flat_antenna_array = individual[:NUM_ELEMENTS]
     array_2d = np.array(flat_antenna_array).reshape(ARRAY_SHAPE)
-
     
     # Fixed parameters
     params = {
@@ -98,8 +97,9 @@ def evaluate(individual):
         'min_freq': 0.8e9,
         'center_freq': 1.3e9,
         'max_freq': 1.8e9,
+        'overlap': 0.1,
         'fc': 0.7e9,
-        'max_timesteps': 20000,
+        'max_timesteps': 10000,
         'override_min_global_grid': None,
         'plot': False,
         'showCad': False,
@@ -159,7 +159,7 @@ def optimize_antenna():
         filemode='a'
     )
     # Initialize population
-    population = toolbox.population(n=16)
+    population = toolbox.population(n=32)
     
     # Statistics to keep track of progress
     stats = tools.Statistics(lambda ind: ind.fitness.values)
@@ -168,7 +168,7 @@ def optimize_antenna():
     stats.register("max", np.max)
     
     # Hall of Fame to store the best individuals
-    hof = tools.HallOfFame(1)
+    hof = tools.HallOfFame(3)
     
     # Genetic Algorithm parameters
     NGEN = 200
@@ -201,36 +201,36 @@ def optimize_antenna():
 if __name__ == "__main__":
     array_2d = optimize_antenna()
     # Run a final simulation with the best 2D array
+        # Fixed parameters
     params = {
         'Sim_CSX' : 'IFA.xml',
         'unit': 1e-3,
-        'substrate_width': 25,
-        'substrate_length': 80,
+        'substrate_width': 25.5,
+        'substrate_length': 107,
         'substrate_thickness': 1.5,
         'substrate_epsR': 4.5,
         'gndplane_position': 0,
         'substrate_cells': 4,
-        'ant_h': 14,
-        'ant_l': 20,
+        'ant_h': 24.5,
+        'ant_l': 24.5,
         'ant_fp': 5,
         'ant_e': 0.5,
         'feed_R': 50,
-        'min_freq': 0.83e9,
-        'center_freq': 1.5e9,
+        'min_freq': 0.8e9,
+        'center_freq': 1.3e9,
         'max_freq': 1.8e9,
-        'fc': 0.8e9,
+        'overlap': 0.1,
+        'fc': 0.7e9,
         'max_timesteps': 20000,
         'override_min_global_grid': None,
-        'plot': False,
+        'plot': True,
         'showCad': False,
         'post_proc_only': False,
         'delete_simulation_files': True,
         'antenna_grid': array_2d,
         'randomhash': random.randint(0, 1000000),
         'frequencies': [0.83e9, 1.8e9],
-        'xmultiplier': 3,
-        'ymultiplier': 3,
-        'zmultiplier': 3,
+        'numThreads': 4,
         'lambdamultiplier': 2,
     }
     freq, s11_dB, Zin, P_in, hash_prefix = ga_simulation(params)
