@@ -160,16 +160,35 @@ def create_ground_plane(CSX, parameters, mesh, FDTD):
     substrate_length = parameters['substrate_length']
     substrate_thickness = parameters['substrate_thickness']
     ant_e = parameters['ant_e']
+    
     gndplane_position = parameters['gndplane_position']
+
+    overlap=parameters['overlap']
+    ant_h = parameters['ant_h']  # antenna height (y-direction)
+    ant_l = parameters['ant_l']  # antenna length (x-direction)
+    antenna_grid = parameters['antenna_grid']  # 2D grid of the antenna pattern
+    num_cells_x = antenna_grid.shape[1]
+    num_cells_y = antenna_grid.shape[0]
+    # Define the physical size of each cell
+    cell_size_x = ant_l / num_cells_x
+    cell_size_y = ant_h / num_cells_y
 
     # Create ground plane material
     gnd = CSX.AddMetal('groundplane')
     start = [-substrate_width / 2 + ant_e, -substrate_length / 2 + ant_e, substrate_thickness + gndplane_position]
     stop = [substrate_width / 2 - ant_e, substrate_length / 2 - ant_e, substrate_thickness + gndplane_position]
+    #start = [-substrate_width / 2 + ant_e-cell_size_x*overlap, -substrate_length / 2 + ant_e-ant_e-cell_size_y*overlap, substrate_thickness + gndplane_position]
+    #stop = [substrate_width / 2 - ant_e+cell_size_x*overlap, substrate_length / 2 - ant_e+cell_size_y*overlap, substrate_thickness + gndplane_position]
     gnd.AddBox(start=start, stop=stop, priority=10)
 
     # Add edges and optional mesh line
     FDTD.AddEdges2Grid(dirs='xy', properties=gnd)
+
+    start = [-substrate_width / 2 + ant_e-cell_size_x*overlap, -substrate_length / 2 + ant_e-ant_e, substrate_thickness + gndplane_position]
+    stop = [substrate_width / 2 - ant_e+cell_size_x*overlap, substrate_length / 2 - ant_e+cell_size_y*overlap, substrate_thickness + gndplane_position]
+    gnd.AddBox(start=start, stop=stop, priority=10)
+
+
     # Optional: add mesh line along 'x' if needed
     # mesh.AddLine("x", start)
 
@@ -237,6 +256,7 @@ def create_ga(FDTD, CSX, mesh, parameters):
     ant_l = parameters['ant_l']  # antenna length (x-direction)
     ant_fp = parameters['ant_fp']  # feedpoint position along x
     ant_e = parameters['ant_e']  # edge distance
+    overlap = parameters['overlap']  # overlap distance
     gndplane_position = parameters['gndplane_position']  # depth of the ground plane in z
     antenna_grid = parameters['antenna_grid']  # 2D grid of the antenna pattern
 
@@ -291,11 +311,11 @@ def create_ga(FDTD, CSX, mesh, parameters):
         x_start, y_start, x_end, y_end = block
 
         # Calculate the physical coordinates
-        start_x = tl[0] + x_start * cell_size_x
-        stop_x = tl[0] + (x_end + 1) * cell_size_x  # +1 because cells are zero-indexed
+        start_x = tl[0] + x_start * cell_size_x-cell_size_x*overlap
+        stop_x = tl[0] + (x_end + 1) * cell_size_x+cell_size_x*overlap # +1 because cells are zero-indexed
 
-        start_y = tl[1] - y_start * cell_size_y
-        stop_y = tl[1] - (y_end + 1) * cell_size_y
+        start_y = tl[1] - y_start * cell_size_y+cell_size_y*overlap
+        stop_y = tl[1] - (y_end + 1) * cell_size_y-cell_size_y*overlap
 
         start = np.array([start_x, stop_y, tl[2]])  # Note that stop_y < start_y because y decreases
         stop = np.array([stop_x, start_y, tl[2]])   # z-coordinate is constant (substrate_thickness)
@@ -303,8 +323,8 @@ def create_ga(FDTD, CSX, mesh, parameters):
         # Add the box to the CSX structure
         ifa_material.AddBox(start, stop, priority=10)
 
-    x_meshlines = [tl[0] + i * cell_size_x for i in range(num_cells_x + 1)]
-    y_meshlines = [tl[1] - i * cell_size_y for i in range(num_cells_y + 1)]
+    x_meshlines = [tl[0] + i * cell_size_x/2 for i in range(num_cells_x*2 + 1)]
+    y_meshlines = [tl[1] - i * cell_size_y/2 for i in range(num_cells_y*2 + 1)]
 
     # Add meshlines along X and Y
     mesh.AddLine('x', x_meshlines)
@@ -322,6 +342,7 @@ def add_feed(FDTD, CSX, mesh, parameters):
     gndplane_position = parameters['gndplane_position']
     substrate_thickness = parameters['substrate_thickness']
     substrate_width = parameters['substrate_width']
+    overlap = parameters['overlap']
     ant_e = parameters['ant_e']
     feed_R = parameters['feed_R']
     cell_size_x = parameters['cell_size_x']
@@ -329,10 +350,10 @@ def add_feed(FDTD, CSX, mesh, parameters):
     ifa_material = CSX.AddMetal('ifa')  # Using the same metal material as the antenna
     print(feed_point)
     # Determine the feed box dimensions
-    start_x = feed_point[0]-cell_size_x/2
-    stop_x = feed_point[0] + cell_size_x/2
-    start_y = feed_point[1]-cell_size_y/2
-    stop_y = feed_point[1]+cell_size_y/2
+    start_x = feed_point[0]-cell_size_x/2-cell_size_x*overlap
+    stop_x = feed_point[0] + cell_size_x/2+cell_size_x*overlap
+    start_y = feed_point[1]-cell_size_y/2-cell_size_y*overlap
+    stop_y = feed_point[1]+cell_size_y/2+cell_size_y*overlap
     start_z = feed_point[2]
 
     if gndplane_position != 0:
@@ -354,14 +375,14 @@ def add_feed(FDTD, CSX, mesh, parameters):
     #ifa_material.AddBox(start_coord, stop_coord, priority=20)  # Higher priority for meshing
 
     # Add meshlines along the feed box edges
-    mesh.AddLine('x', [start_coord[0], stop_coord[0]])
-    mesh.AddLine('y', [start_coord[1], stop_coord[1]])
+    #mesh.AddLine('x', [start_coord[0], stop_coord[0]])
+    #mesh.AddLine('y', [start_coord[1], stop_coord[1]])
     mesh.AddLine('z', [start_coord[2], stop_coord[2]])
 
     # Now, add the lumped port between the feed box and the ground plane
     if gndplane_position != 0:
         # Lumped port is at the bottom face of the feed box in z-direction
-        port_start = np.array([start_x, start_y, stop_z])
+        port_start = np.array([start_x, start_y, start_z])
         port_stop = np.array([stop_x, stop_y, stop_z])
     else:
         # Lumped port is at the side face of the feed box in y-direction
@@ -579,8 +600,9 @@ def ga_simulation(    parameters = {
         'min_freq': 2.4e9,
         'center_freq': 2.45e9,
         'max_freq': 2.5e9,
+        'overlap': 0.1,
         'fc': 1.0e9,
-        'max_timesteps': 600000,
+        'max_timesteps': 1000,
         'override_min_global_grid': None,
         'plot': True,  # Set to True to plot results
         'showCad': True,

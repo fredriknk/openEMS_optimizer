@@ -19,7 +19,7 @@ root = os.getenv('rootdir')
 csxcad_location= os.getenv('csxcad_location')
 os.add_dll_directory(root)
 
-base_path=os.path.abspath(f'..\\runs')
+base_path=os.path.abspath(f'runs')
 
 from datetime import datetime as dt
 from random import randint

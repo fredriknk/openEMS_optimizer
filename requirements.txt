@@ -1,0 +1,7 @@
+dotenv
+numpy
+matplotlib
+h5py
+psutil
+scipy
+deap
