@@ -8,10 +8,10 @@ from time import time
 import json
 from scipy.ndimage import gaussian_filter
 import math as m
-logpath = 'logs/ga_log800MHZ1800mhztest5.txt'
+logpath = 'logs/ga_log800MHZ1800mhztest6.txt'
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (40, 20)
+ARRAY_SHAPE = (30, 40)
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -33,8 +33,8 @@ def init_full_individual():
     individual[NUM_ELEMENTS - 1] = random.randint(0, 1)
 
     for i in range(NUM_ELEMENTS):
-        if random.random() < 0.01:
-            individual[i] = 1 - individual[i]
+        if random.random() < 0.1:
+            individual[i] = 0
 
     return creator.Individual(individual)
 
@@ -50,7 +50,7 @@ def mutate_individual(individual):
 toolbox.register("individual", init_full_individual)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 #use single point crossover
-toolbox.register("mate", tools.cxUniform)
+toolbox.register("mate", tools.cxUniform, indpb=0.5)
 toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
@@ -89,7 +89,7 @@ def evaluate(individual):
         'substrate_epsR': 4.5,
         'gndplane_position': 0,
         'substrate_cells': 4,
-        'ant_h': 45,
+        'ant_h': 20,
         'ant_l': 24.5,
         'ant_fp': 5,
         'ant_e': 0.5,
@@ -108,7 +108,7 @@ def evaluate(individual):
         'antenna_grid': array_2d,
         'randomhash': random.randint(0, 1000000),
         'frequencies': [0.83e9, 1.8e9],
-        'numThreads': 4,
+        'numThreads': 5,
         'lambdamultiplier': 2,
     }
     
@@ -124,8 +124,15 @@ def evaluate(individual):
             idx = (np.abs(freq - f)).argmin()
             s11_value = s11_dB[idx]
             s11_at_center.append(s11_value)
-            fitness *= abs(s11_value) if s11_value <= 0 else 1e-6
-        fitness = m.sqrt(fitness)   
+        s11_arr=1  
+        maxv = np.max(s11_at_center)
+        print(f"Max S11: {maxv}")
+        for s11 in s11_at_center:
+            if maxv-s11 > 10:
+                s11 = maxv-10
+                print(f"Clipping S11 to {s11}")
+            s11_arr*=abs(s11)
+        fitness = np.sqrt(s11_arr)
         fitness *= -1
         
         total_seconds = time() - starttime
@@ -230,7 +237,7 @@ if __name__ == "__main__":
         'antenna_grid': array_2d,
         'randomhash': random.randint(0, 1000000),
         'frequencies': [0.83e9, 1.8e9],
-        'numThreads': 4,
+        #'numThreads': 4,
         'lambdamultiplier': 2,
     }
     freq, s11_dB, Zin, P_in, hash_prefix = ga_simulation(params)
