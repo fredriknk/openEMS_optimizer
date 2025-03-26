@@ -45,7 +45,7 @@ def bt_groundplane():
     gndplane_position = -0.36
     substrate_cells = 4
     ifa_h = 6.072
-    ifa_l = 17.9
+    ifa_l = 19
     ifa_w1 = 0.613
     ifa_w2 = 0.4720
     ifa_wf = 0.425
@@ -56,12 +56,14 @@ def bt_groundplane():
     mifa_meander_edge_distance=3.0
     substrate_epsR = 4.5
     feed_R = 50
-    min_freq = 2.4e9
+    min_freq = 2.35e9
     center_freq = 2.45e9
-    max_freq = 2.5e9
+    max_freq = 2.6e9
+    fc = center_freq-1.5e6
     min_size = 0.201 # minimum automesh size
-    override_min_global_grid = 2.4#None #none if not override
-    max_timesteps = 100000
+    max_size=1 #maximum automesh size
+    override_min_global_grid = None #none if not override
+    max_timesteps = 500000
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
@@ -89,6 +91,7 @@ def bt_groundplane():
                                                     center_freq=center_freq,
                                                     max_freq=max_freq,
                                                     min_size=min_size,
+                                                    fc=fc,
                                                     override_min_global_grid=override_min_global_grid,
                                                     max_timesteps=max_timesteps,
                                                     plot=plot)
@@ -121,8 +124,9 @@ def optimized_wifi():
     center_freq = 2.45e9
     max_freq = 2.5e9
     min_size = 0.201 # minimum automesh size
-    override_min_global_grid = 1.2 #none if not override
-    max_timesteps = 100000
+    max_size=1 #maximum automesh size
+    override_min_global_grid = None #none if not override
+    max_timesteps = 400000
     plot = True
 
     freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
@@ -150,6 +154,7 @@ def optimized_wifi():
                                                     center_freq=center_freq,
                                                     max_freq=max_freq,
                                                     min_size=min_size,
+                                                    max_size=max_size,
                                                     override_min_global_grid=override_min_global_grid,
                                                     max_timesteps=max_timesteps,
                                                     plot=plot)
@@ -182,6 +187,7 @@ def wifi_groundplane():
     center_freq = 2.45e9
     max_freq = 2.5e9
     min_size = 0.2 # minimum automesh size
+    max_size=1 #maximum automesh size
     override_min_global_grid = 1.2 #none if not override
     max_timesteps = 100000
     plot = True
@@ -212,12 +218,81 @@ def wifi_groundplane():
                                                     center_freq=center_freq,
                                                     max_freq=max_freq,
                                                     min_size=min_size,
+                                                    max_size=max_size,
                                                     override_min_global_grid=override_min_global_grid,
                                                     max_timesteps=max_timesteps,
                                                     plot=plot,
                                                     delete_simulation_files=cleanup)
 
-def lte():
+    
+def lte2():
+    #S11 at cf: -41.2571, Imp: 50.9R 0.1z, ifa_l: 92.994, ifa_h: 13.982, ifa_fp: 3.474, ifa_w1: 0.446, ifa_w2: 0.948, ifa_wf: 0.500, mifa_meander_edge_distance: 2.000, Res f: 0.828 GHz, S11 at res: -45.202, BW1: 0.70 GHz, BW2: -0.00 GHz, BW = -696.0 MHz - id e726f5c47d11
+    Sim_CSX = 'IFA.xml'
+    showCad = True
+    post_proc_only = False
+    unit = 1e-3
+    substrate_width = 25.5
+    substrate_length = 108
+    substrate_thickness = 1.5
+    gndplane_position = -0.36
+    substrate_cells = 4
+    ifa_h = 13.982
+    ifa_l = 92.994
+    ifa_w1 = 0.446
+    ifa_w2 = 0.948
+    ifa_wf = 0.500
+    ifa_fp = 3.474
+    ifa_e = 0.5
+    mifa_meander=2.2
+    md = 4
+    mifa_tipdistance=2
+    mifa_meander_edge_distance=mifa_tipdistance
+    substrate_epsR = 4.5
+    feed_R = 50
+    min_freq = 0.791e9
+    center_freq = 0.826e9
+    max_freq = 0.862e9
+    fc = 0.83e9-0.7e9
+    min_size = 0.4 # minimum automesh sizee
+    max_size=2 #maximum automesh size
+    override_min_global_grid = None #none if not override
+    max_timesteps = 600000
+    plot=True
+    cleanup = False
+
+    freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
+                                                    showCad=showCad,
+                                                    post_proc_only=post_proc_only,
+                                                    unit=post_proc_only,
+                                                    substrate_width=substrate_width,
+                                                    substrate_length=substrate_length,
+                                                    substrate_thickness=substrate_thickness,
+                                                    gndplane_position=gndplane_position,
+                                                    substrate_cells=substrate_cells,
+                                                    ifa_h=ifa_h,
+                                                    ifa_l=ifa_l,
+                                                    ifa_w1=ifa_w1,
+                                                    ifa_w2=ifa_w2,
+                                                    ifa_wf=ifa_wf,
+                                                    ifa_fp=ifa_fp,
+                                                    ifa_e=ifa_e,
+                                                    mifa_meander=mifa_meander,
+                                                    mifa_tipdistance=mifa_tipdistance,
+                                                    mifa_meander_edge_distance=mifa_meander_edge_distance,
+                                                    substrate_epsR=substrate_epsR,
+                                                    feed_R=feed_R,
+                                                    fc=fc,
+                                                    min_freq=min_freq,
+                                                    center_freq=center_freq,
+                                                    max_freq=max_freq,
+                                                    min_size=min_size,
+                                                    max_size=max_size,
+                                                    override_min_global_grid=override_min_global_grid,
+                                                    max_timesteps=max_timesteps,
+                                                    plot=plot)
+
+
+def lte1():
     #2024-12-22 18:43:45,044 - total seconds: 105.39, S11 at cf: -50.8712, Imp: 49.7R 0.1z, ifa_l: 140.389, ifa_h: 12.423, ifa_fp: 2.914, ifa_w1: 0.426, ifa_w2: 0.444, ifa_wf: 0.485, mifa_meander_edge_distance: 1.595, Res f: 0.830 GHz, S11 at res: -50.871, BW1: 0.79 GHz, BW2: 0.90 GHz, BW = 101.9 MHz - id 4235e8a4bce2
     Sim_CSX = 'IFA.xml'
     showCad = True
@@ -245,8 +320,9 @@ def lte():
     center_freq = 0.826e9
     max_freq = 0.862e9
     fc = 0.83e9-0.7e9
-    min_size = 0.10 # minimum automesh size
-    override_min_global_grid = 4 #none if not override
+    min_size = 0.1 # minimum automesh sizee
+    max_size=2 #maximum automesh size
+    override_min_global_grid = None #none if not override
     max_timesteps = 2200000
     plot = True
     cleanup = False
@@ -285,4 +361,8 @@ def lte():
 
 #init main function
 if __name__ == "__main__":
-    lte()
+    lte2()
+    #wifi_groundplane()
+    #optimized_wifi()
+    #bt_groundplane()
+    #lte1()

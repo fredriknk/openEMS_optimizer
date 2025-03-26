@@ -58,20 +58,21 @@ def generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size,
         direction = int(length / abs(length))
 
         # Add the first point offset by the direction
-        meshlines[axis].append(startpoint + direction * min_size * 2 / 3)
+        meshlines[axis].append(startpoint + direction * length* 2 / 3)
         # Initialize the current point and size
-        meshlines[axis].append( startpoint - direction * min_size * 1 / 3)
+        meshlines[axis].append( startpoint - direction * length* 1 / 3)
         # Generate mirrored points from center to stop
         inverted = (np.array(meshlines[axis][::-1]) - startpoint) * -1 + stoppoint
         for point in inverted:
             meshlines[axis].append(point)
-
+            #print("appending")
         # Ensure the distance between two middle points is not larger than max_size
         mid_index = len(meshlines[axis]) // 2
-        #if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > max_size:
-        #    meshlines[axis].insert(mid_index, center)
+        if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > max_size:
+            meshlines[axis].insert(mid_index, center)
         #if abs(meshlines[axis][mid_index] - meshlines[axis][mid_index - 1]) > length/2:
         #    meshlines[axis].insert(mid_index, center)
+
 
 def extend_line(start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
     # Calculate the total range for each dimension
@@ -87,8 +88,8 @@ def extend_line(start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
         center = (startpoint+stoppoint)/2
         length = startpoint-stoppoint
         retries = 0
-        #generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size, length, meshlines)
-        meshlines[axis] = [start[axis],stop[axis]]
+        generate_mesh_lines(startpoint, center, stoppoint, axis, min_size, max_size, length, meshlines)
+        #meshlines[axis].append([start[axis],stop[axis]])
     return meshlines
 
 def getstartstops(primitives, start, stop,min_size=0.2,max_size =4.,min_cells=3,max_cells=10):
@@ -136,6 +137,28 @@ def create_substrate(CSX, substrate_width, substrate_length, substrate_thickness
     # Add extra cells to discretize the substrate thickness
     mesh.AddLine('z', np.linspace(0, substrate_thickness, substrate_cells+1))
 
+def remove_mesh_lines_outside_pcb(mesh,
+                                  x_min, x_max,
+                                  y_min, y_max,
+                                  z_min, z_max):
+    """
+    Remove mesh lines in x, y, or z that lie outside
+    [x_min, x_max], [y_min, y_max], or [z_min, z_max], respectively.
+    """
+    # For each axis:
+    for axis, bounds in zip(['x', 'y', 'z'],
+                            [(x_min, x_max), (y_min, y_max), (z_min, z_max)]):
+        # Fetch all mesh lines
+        lines = mesh.GetLines(axis)
+        first = lines.min()
+        last = lines.max()
+        # Keep only those lines within [min, max]
+        lines_in_bounds = [l for l in lines if bounds[0] <= l <= bounds[1]]
+        lines_in_bounds.append(first)
+        lines_in_bounds.append(last)
+        # Reset the lines on that axis
+        mesh.SetLines(axis, lines_in_bounds)
+
 def create_ground_plane(CSX, substrate_width, substrate_length, substrate_thickness, ifa_e, gndplane_position, mesh, min_size, max_size):
     """
     Create the ground plane in the CSX structure.
@@ -177,7 +200,7 @@ def create_ifa(CSX, mesh, parameters):
     tl = np.array([-substrate_width/2+ifa_e+ifa_fp, substrate_length / 2 - ifa_e, substrate_thickness])  # translation vector
     via_diameter=0.5
     if gndplane_position != 0:
-        print(f"offset groundplane, add vias")
+        #print(f"offset groundplane, add vias")
         feedpoint = -via_diameter #set feedpoint to groundplane edge
         short_circuit_stub = via_diameter
     else:
@@ -218,14 +241,14 @@ def create_ifa(CSX, mesh, parameters):
 
     # Radiating element
     if ifa_l < substrate_width-2*ifa_e:
-        print('Ifa: ifa_l smaller than substrate width just do normal radiating element')
+        #print('Ifa: ifa_l smaller than substrate width just do normal radiating element')
         start = np.array([-ifa_fp , ifa_h, 0]) + tl
         stop = start + np.array([ifa_l, -ifa_w2, 0])
         ifa.AddBox(start=start, stop=stop, priority=10)
     else:
                 #check if we can add a tip element
         length_diff = (ifa_l - (substrate_width-2*ifa_e))
-        print('ifa_l larger than substrate width starting meandering')
+        #print('ifa_l larger than substrate width starting meandering')
 
         radiating_element_start = np.array([-ifa_fp , ifa_h, 0]) + tl
         radiating_element_stop = radiating_element_start + np.array([substrate_width-2*ifa_e, -ifa_w2, 0])
@@ -236,7 +259,7 @@ def create_ifa(CSX, mesh, parameters):
         max_edgelength_tip = ifa_h-mifa_tipdistance
 
         if length_diff < max_edgelength_tip:
-            print(f"only the tip {length_diff} < {max_edgelength_tip}")
+            #print(f"only the tip {length_diff} < {max_edgelength_tip}")
             start= radiating_element_stop + np.array([0,+ifa_w2,0])
             stop = start + np.array([-ifa_w2, -length_diff-ifa_w2, 0])
 
@@ -261,24 +284,24 @@ def create_ifa(CSX, mesh, parameters):
             mesh.AddLine('x',meshlines[0] )
             mesh.AddLine('y', meshlines[1])
             length_diff -= max_edgelength_tip
-            print("Adding tip element{max_edgelength_tip}")
+            #print("Adding tip element{max_edgelength_tip}")
 
             #add meanders for remainder of distance
             ldfiff_ratio = length_diff /(max_length_mifa*2)
-            print(f"ldfiff_ratio: {ldfiff_ratio}")
+            #print(f"ldfiff_ratio: {ldfiff_ratio}")
             if ldfiff_ratio > 0:
                 stop = start+np.array([-ifa_w2,0,0])
                 while ldfiff_ratio > 0:
-                    print(f"current ldfiff_ratio: {ldfiff_ratio}")
+                    #print(f"current ldfiff_ratio: {ldfiff_ratio}")
                     if ldfiff_ratio < 1:
                         current_meander = ldfiff_ratio
                         ldfiff_ratio = 0
                     else:
                         current_meander = 1
                         ldfiff_ratio -= 1
-                    print(f"Adding meanders ratio: {current_meander}")
+                    #print(f"Adding meanders ratio: {current_meander}")
                     if current_meander < 0.005:
-                        print(f"current_meander too small: {current_meander}")
+                        #print(f"current_meander too small: {current_meander}")
                         break
                     #first topline
                     start = stop+np.array([ifa_w2,0,0])
@@ -320,6 +343,7 @@ def create_ifa(CSX, mesh, parameters):
     meshlines = extend_line(start, stop,min_size,max_size)
     mesh.AddLine('x',meshlines[0] )
     mesh.AddLine('y', meshlines[1])
+    
 
     if gndplane_position != 0:
         feed_direction = 'z'
@@ -355,7 +379,7 @@ def add_feed(FDTD, CSX, mesh, tl, ifa_wf, feedpoint, gndplane_position, feed_R, 
 
     return port
 
-def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immunity_array):
+def finalize_mesh(mesh, min_size,max_size, f0, fc, unit, override_min_global_grid, immunity_array,parameters):
     """
     Finalize the mesh.
     """
@@ -363,6 +387,7 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
     mesh_res = C0 / (f0 + fc) / unit / 20
     if override_min_global_grid is not None:
         mesh_res = override_min_global_grid
+    
 
     TOL = 1e-9  # Tolerance for floating point comparison
 
@@ -375,7 +400,7 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
 
     for axis in ['x', 'y', 'z']:
         lines = mesh.GetLines(axis)
-        print(f"meshlines {axis} before filtering: {lines}")
+        #print(f"meshlines {axis} before filtering: {lines}")
 
         # Sort lines to process them in order
         lines.sort()
@@ -385,7 +410,7 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
 
         # Initialize filtered lines with the first line
         filtered_lines = [lines[0]]
-
+        
         # Iterate over the remaining lines
         for l in lines[1:]:
             last_line = filtered_lines[-1]
@@ -405,41 +430,57 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
                 elif immune_l:
                     # Current line is immune, remove last_line if not immune
                     if not immune_last_line:
-                        print(f"Removing line {last_line} on {axis}-axis; too close to immune line {l} (distance {distance})")
+                        #print(f"Removing line {last_line} on {axis}-axis; too close to immune line {l} (distance {distance})")
                         filtered_lines[-1] = l  # Replace last_line with l
                     else:
                         # Both lines are immune, keep both
                         filtered_lines.append(l)
                 elif immune_last_line:
                     # Last line is immune, remove l
-                    print(f"Removing line {l} on {axis}-axis; too close to immune line {last_line} (distance {distance})")
+                    #print(f"Removing line {l} on {axis}-axis; too close to immune line {last_line} (distance {distance})")
                     # Do not add l to filtered_lines
                     pass
                 else:
                     # Neither line is immune, remove current line l
-                    print(f"Removing line {l} on {axis}-axis; too close to {last_line} (distance {distance})")
+                    #print(f"Removing line {l} on {axis}-axis; too close to {last_line} (distance {distance})")
                     # Do not add l to filtered_lines
                     pass
-
+        
         mesh.SetLines(axis, filtered_lines)
-        print(f"meshlines {axis} after filtering: {mesh.GetLines(axis)}")
+        #print(f"meshlines {axis} after filtering: {mesh.GetLines(axis)}")
 
+    mesh.SmoothMeshLines('all', max_size, 1.5)
+    #DELETE ALL LINES OUTSIDE PCB AREA HERE
+    pcb_x_min = -parameters["substrate_width"] / 2
+    pcb_x_max =  parameters["substrate_width"] / 2
+
+    pcb_y_min = -parameters["substrate_length"] / 2
+    pcb_y_max =  parameters["substrate_length"] / 2 + parameters["ifa_h"] + parameters["ifa_e"]
+
+    # In many designs, the PCB "thickness" region might be from z=0
+    # up to z=substrate_thickness, plus ground-plane offset.
+    z_lower = min(0, parameters["substrate_thickness"] + parameters["gndplane_position"])
+    z_upper = max(parameters["substrate_thickness"], parameters["substrate_thickness"] + parameters["gndplane_position"])
+
+    remove_mesh_lines_outside_pcb(mesh,
+                                pcb_x_min, pcb_x_max,
+                                pcb_y_min, pcb_y_max,
+                                z_lower, z_upper)
+    
     mesh.SmoothMeshLines('all', mesh_res, 1.5)
-
-
     adjusted_lines_dict = {}
     max_factor = 1.5
 
     for axis in ['x', 'y', 'z']:
         lines = mesh.GetLines(axis)
-        print(f"Mesh lines {axis} before adjusting: {lines}")
+        #print(f"Mesh lines {axis} before adjusting: {lines}")
 
         # Sort the lines to ensure they are in ascending order
         sorted_lines = sorted(lines)
 
         if not sorted_lines:
             adjusted_lines_dict[axis] = []
-            print(f"No lines present for axis {axis}.\n")
+            #print(f"No lines present for axis {axis}.\n")
             continue
 
         # Initialize the adjusted list with the first line
@@ -448,13 +489,13 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
         if len(sorted_lines) == 1:
             # Only one line exists; no distance comparisons needed
             adjusted_lines_dict[axis] = adjusted_lines
-            print(f"Only one line present for axis {axis}. No adjustments needed.\n")
+            #print(f"Only one line present for axis {axis}. No adjustments needed.\n")
             continue
 
         # Calculate the initial distance between the first two lines
         prev_distance = sorted_lines[1] - sorted_lines[0]
         adjusted_lines.append(sorted_lines[1])
-        print(f"Initial distance for axis {axis}: {prev_distance}")
+        #print(f"Initial distance for axis {axis}: {prev_distance}")
 
         # Iterate through the remaining lines
         for current_line in sorted_lines[2:]:
@@ -465,11 +506,11 @@ def finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, immuni
             if current_distance > prev_distance * max_factor and prev_distance >= min_size:
                 adjusted_lines.append(last_adjusted_line + current_distance / 2)
                 #adjusted_lines.append(last_adjusted_line + 2*current_distance / 3)
-            print(f"Added original line {current_line} to axis {axis}. Current distance: {current_distance}")
+            #print(f"Added original line {current_line} to axis {axis}. Current distance: {current_distance}")
             prev_distance = current_distance
 
         mesh.SetLines(axis, adjusted_lines)
-        print(f"Mesh lines {axis} after adjusting: {adjusted_lines}\n")
+        #print(f"Mesh lines {axis} after adjusting: {adjusted_lines}\n")
 
 
     # Add the nf2ff recording box
@@ -502,7 +543,7 @@ def run_simulation(FDTD, Sim_Path, sim_file, temp_file):
             with open(sim_file, 'w') as f:
                 f.write('Completed')
         except Exception as e:
-            print("An error occurred during simulation:", e)
+            #print("An error occurred during simulation:", e)
             import traceback
             traceback.print_exc()
 
@@ -523,6 +564,7 @@ def post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, ce
 
     if len(idx) != 1:
         print('No resonance frequency found for far-field calculation')
+        efficiency=0
     else:
         f_res_ind = np.argmin(np.abs(s11))
         f_res = freq[f_res_ind]
@@ -531,11 +573,11 @@ def post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, ce
         # Create the bottom-right polar subplot (axs[1, 1]) for the xy-plane
         phi = theta
         nf2ff_res_theta90 = nf2ff.CalcNF2FF(Sim_Path, f_res, 90, phi, center=np.array([0, 0, 0]) , read_cached=True, outfile='nf2ff_xy.h5')
-
+        efficiency = 100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])
         print('Radiated power: Prad = {:.2e} Watt'.format(nf2ff_res_theta90.Prad[0]))
         print('Directivity:    Dmax = {:.1f} ({:.1f} dBi)'.format(nf2ff_res_theta90.Dmax[0],
                                                                 10 * np.log10(nf2ff_res_theta90.Dmax[0])))
-        print('Efficiency:   nu_rad = {:.1f} %'.format(100 * nf2ff_res_theta90.Prad[0] / np.real(P_in[idx[0]])))
+        print('Efficiency:   nu_rad = {:.1f} %'.format(efficiency))
 
         print(f"Resonance frequency: {f_res/1e9} GHz")
         #s11 at closste to center frequency
@@ -634,39 +676,41 @@ def post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, ce
             plt.figure()
             plt.show()
 
-    return freq, s11_dB, Zin, P_in
+    return freq, s11_dB, Zin, P_in, efficiency
 
-def ifa_simulation(Sim_CSX='IFA.xml',
-                   showCad=True,
-                   post_proc_only=False,
-                   unit=1e-3,
-                   substrate_width=21,
-                   substrate_length=83.15,
-                   substrate_thickness=1.5,
-                   gndplane_position=0,
-                   substrate_cells=4,
-                   ifa_h=14.054,
-                   ifa_l=19.500,
-                   ifa_w1=0.608,
-                   ifa_w2=0.400,
-                   ifa_wf=0.762,
-                   ifa_fp=5.368,
-                   ifa_e=0.5,
-                   mifa_meander=3.0,
-                   mifa_tipdistance=2.0,
-                   mifa_meander_edge_distance=3.0,
-                   substrate_epsR=4.5,
-                   feed_R=50,
-                   min_freq=2.4e9,
-                   center_freq=2.45e9,
-                   max_freq=2.5e9,
-                   min_size=0.2,#minimum automesh size
-                   max_size=4.0,#maximum automesh size
-                   fc=1.0e9,  # 20 dB corner frequency
-                   max_timesteps=600000,
-                   override_min_global_grid=None,
-                   plot=True,
-                   delete_simulation_files=True):
+def ifa_simulation( Sim_CSX='IFA.xml',
+                    showCad=True,
+                    post_proc_only=False,
+                    unit=1e-3,
+                    substrate_width = 25.5,
+                    substrate_length = 108,
+                    substrate_thickness = 1.5,
+                    gndplane_position = -0.36,
+                    substrate_cells = 4,
+                    ifa_h = 12.3381,
+                    ifa_l = 140.7381,
+                    ifa_w1 = 0.403,
+                    ifa_w2 = 0.423,
+                    ifa_wf = 0.401,
+                    ifa_fp = 2.914,
+                    ifa_e = 0.5,
+                    mifa_meander=1.5,
+                    md = 4,
+                    mifa_tipdistance=1.5,
+                    mifa_meander_edge_distance=1.648,
+                    substrate_epsR=4.5,
+                    feed_R=50,
+                    min_freq = 0.78e9,
+                    center_freq = 0.83e9,
+                    max_freq = 0.87e9,
+                    fc = 0.83e9-0.7e9,
+                    min_size=0.4,#minimum automesh size
+                    max_size=1.0,#maximum automesh size
+                    #fc=1.0e9,  # 20 dB corner frequency
+                    max_timesteps=600000,
+                    override_min_global_grid=None,
+                    plot=True,
+                    delete_simulation_files=True):
     #############################################################################
     #                substrate_width
     #  _______________________________________________    __ substrate_thickness
@@ -790,16 +834,16 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     nf2ff = FDTD.CreateNF2FFBox()
 
 
-    finalize_mesh(mesh, min_size, f0, fc, unit, override_min_global_grid, {"x": [], "y": [], "z": [0, substrate_thickness+gndplane_position,substrate_thickness]})
+    finalize_mesh(mesh, min_size,max_size, f0, fc, unit, override_min_global_grid, {"x": [], "y": [], "z": [0, substrate_thickness+gndplane_position,substrate_thickness]},parameters)
 
     # primitives=CSX.GetAllPrimitives()
     # mesh.SetLines("x", [0,1])
     # mesh.SetLines("y", [0,1])
     # mesh.SetLines("z", [0,1])
     # for primitive in primitives:
-    #     print(f"Primitive: {primitive}")
+    #     #print(f"Primitive: {primitive}")
     #     bounding_box=primitive.GetBoundBox()
-    #     print(f"Bounding box: {bounding_box}")
+    #     #print(f"Bounding box: {bounding_box}")
     #     mesh.AddLine("x",bounding_box[0][0])
     #     mesh.AddLine("x", bounding_box[1][0])
     #     mesh.AddLine("y", bounding_box[0][1])
@@ -813,11 +857,11 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     if os.path.exists(Sim_Path):
         if os.path.exists(temp_file):
             import shutil
-            print(f"Cleaning up incomplete run: {Sim_Path}")
+            #print(f"Cleaning up incomplete run: {Sim_Path}")
             shutil.rmtree(Sim_Path)
 
     if not os.path.exists(Sim_Path):
-        print(f"Creating directory {Sim_Path}")
+        #print(f"Creating directory {Sim_Path}")
         os.mkdir(Sim_Path)
 
     CSX_file = os.path.join(Sim_Path, Sim_CSX)
@@ -825,9 +869,9 @@ def ifa_simulation(Sim_CSX='IFA.xml',
 
     # Show the structure
     if showCad:
-        print("showing cad")
-        print(f"csxcad location{csxcad_location}")
-        print(f"csxfile location {CSX_file}")
+        #print("showing cad")
+        #print(f"csxcad location{csxcad_location}")
+        #print(f"csxfile location {CSX_file}")
         os.system( csxcad_location + ' "{}"'.format(CSX_file))
 
     sim_file = os.path.join(Sim_Path, 'complete_run.flag')
@@ -838,10 +882,10 @@ def ifa_simulation(Sim_CSX='IFA.xml',
     if os.path.exists(sim_file):
         # Post-processing & plotting
         freq = np.linspace(max(0, f0 - fc), f0 + fc, 501)
-        freq, s11_dB, Zin, P_in = post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, center_freq, nf2ff,parameters)
+        freq, s11_dB, Zin, P_in, efficiency= post_process_results(Sim_Path, port, freq, delete_simulation_files, plot, center_freq, nf2ff,parameters)
 
-        return freq, s11_dB, Zin, P_in , hash_prefix
-    return None, None, None, None, None
+        return freq, s11_dB, Zin, P_in , hash_prefix, efficiency
+    return None, None, None, None, None, None
 
 if __name__ == "__main__":
     ifa_simulation()

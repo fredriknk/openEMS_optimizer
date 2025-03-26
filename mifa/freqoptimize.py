@@ -34,6 +34,15 @@ def save_callback(xk, convergence):
     save_state(save_filename, result_state)
     return False  # Returning False allows the optimization to continue
 
+def reflection_percent(s11_db):
+    """
+    Calculate the percentage of incident power that is reflected.
+
+    :param s11_db: (float) S11 in dB
+    :return: (float) Reflected power in percent
+    """
+    gamma_magnitude = 10 ** (s11_db / 20.0)   # Reflection coefficient |Γ|
+    return 1- (gamma_magnitude ** 2)     # % reflected = 100 * |Γ|^2
 
 def evaluation_fun(x, variable_names, fixed_params,logname):
     import logging
@@ -61,18 +70,19 @@ def evaluation_fun(x, variable_names, fixed_params,logname):
     #ifa_wf = 0.5
     #ifa_fp = 4.5
     ifa_e = 0.5
-    mifa_meander=1.5
-    mifa_tipdistance=1.5
-    #mifa_meander_edge_distance=1.5
+    mifa_meander=2.2
+    mifa_tipdistance=2
+    mifa_meander_edge_distance=mifa_tipdistance
     substrate_epsR = 4.5
     feed_R = 50
-    min_freq = 0.78e9
-    center_freq = 0.83e9
-    max_freq = 0.87e9
+    min_freq = 0.791e9
+    center_freq = 0.826e9
+    max_freq = 0.862e9
     fc = 0.83e9-0.7e9
-    min_size = 0.30 # minimum automesh size
+    min_size = 0.3 # minimum automesh sizee
+    max_size=2 #maximum automesh size
     override_min_global_grid = None #none if not override
-    max_timesteps = 220000
+    max_timesteps = 1000000
     plot = False
     cleanup = False
     
@@ -110,14 +120,12 @@ def evaluation_fun(x, variable_names, fixed_params,logname):
     ifa_w1 = params['ifa_w1']
     ifa_w2 = params['ifa_w2']
     ifa_wf = params['ifa_wf']
-    mifa_meander_edge_distance=params['mifa_meander_edge_distance']
-    mifa_tipdistance=mifa_meander_edge_distance
     
     # Constants for the simulation (as per your original code)
     # ...
 
     try:
-        freq, s11_dB, Zin, P_in, hash_prefix = ifa_simulation(Sim_CSX=Sim_CSX,
+        freq, s11_dB, Zin, P_in, hash_prefix,efficiency = ifa_simulation(Sim_CSX=Sim_CSX,
                                                 showCad=showCad,
                                                 post_proc_only=post_proc_only,
                                                 unit=post_proc_only,
@@ -143,6 +151,7 @@ def evaluation_fun(x, variable_names, fixed_params,logname):
                                                 fc=fc,
                                                 max_freq=max_freq,
                                                 min_size=min_size,
+                                                max_size=max_size,
                                                 override_min_global_grid=override_min_global_grid,
                                                 max_timesteps=max_timesteps,
                                                 plot=plot,
@@ -185,6 +194,8 @@ def evaluation_fun(x, variable_names, fixed_params,logname):
         # Log parameters and objective function values
         log_message = (
             f"total seconds: {total_seconds:.2f}, "
+            f"Efficiency: {efficiency:.3f}, "
+            f"Comps11 at cf: {reflection_percent(s11_value)*(efficiency/100):.4f}, "
             f"S11 at cf: {s11_value:.4f}, Imp: {impedance:.1f}R {reactance:.1f}z, "
             f"ifa_l: {ifa_l:.3f}, ifa_h: {ifa_h:.3f}, ifa_fp: {ifa_fp:.3f}, "
             f"ifa_w1: {ifa_w1:.3f}, ifa_w2: {ifa_w2:.3f}, ifa_wf: {ifa_wf:.3f}, "
@@ -196,7 +207,7 @@ def evaluation_fun(x, variable_names, fixed_params,logname):
         logger.info(log_message)
 
         # Return the objective function value (since we want to minimize it)
-        return s11_value
+        return reflection_percent(s11_value)*(efficiency/100)
 
     except Exception as e:
         logger.error(f"Exception in evaluation_fun: {e}")
@@ -220,24 +231,22 @@ if __name__ == "__main__":
 
     # Fixed parameters
     fixed_params = {
-        'ifa_l': 139.897,  # Initial value
-        'ifa_h': 12.486,
-        'ifa_fp': 3.049,
-        'ifa_w1': 0.6,
-        'ifa_w2': 0.6,
-        'ifa_wf': 0.6,
-        "mifa_meander_edge_distance":1.5,
+        "ifa_l" : 85,
+        "ifa_h" : 13,
+        "ifa_w1" : 0.6,
+        "ifa_w2" : 0.6,
+        "ifa_wf" : 0.6,
+        "ifa_fp" : 2.914,
     }
 
     # Define bounds for each variable you want to optimize
     variable_bounds = {
-        'ifa_l': (135, 145),
-        'ifa_h': (11, 16),
-        'ifa_fp': (2.9, 3.1),
-        'ifa_w1': (0.4, 2.5),
-        'ifa_w2': (0.4, 0.6),
-        'ifa_wf': (0.4, 0.6),
-        "mifa_meander_edge_distance": (1.4, 3),
+        'ifa_l': (60, 94),
+        'ifa_h': (12, 16),
+        'ifa_fp': (2.5, 6),
+        'ifa_w1': (0.4, 1.5),
+        'ifa_w2': (0.4, 1.0),
+        'ifa_wf': (0.4, 1.0),
     }
 
     # Variables to optimize from variable_bounds
