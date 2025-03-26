@@ -24,7 +24,8 @@ os.add_dll_directory(root)
 base_path = os.path.abspath(f'runs')
 
 from datetime import datetime as dt
-from random import randint
+import random
+
 import numpy as np
 
 import hashlib
@@ -232,15 +233,21 @@ def find_contiguous_blocks(grid):
     return blocks
 
 def makearray(num_cells_x,num_cells_y,antenna_grid = None, makesafe=False):
-    if antenna_grid is None:
-        antenna_grid = np.zeros((num_cells_y, num_cells_x), dtype=int)
     import random
-    #random.seed(78)
-    for x in range(0, num_cells_x):
-        for y in range(0, num_cells_y):
-            if random.random() < 0.4:
-                antenna_grid[y, x] = 1
-    
+    params={'ant_fp':-1} 
+    ARRAY_SHAPE=(num_cells_y,num_cells_x)
+    array_2d = np.ones(ARRAY_SHAPE)
+    for i in range(ARRAY_SHAPE[0]):
+        for j in range(ARRAY_SHAPE[1]):
+            array_2d[i][j] = random.random() < 0.4
+    for i in range(ARRAY_SHAPE[0]):
+        array_2d[-2][i] = random.random() < 0.1
+    array_2d[-1] = 0
+    if params['ant_fp'] == -1:
+        array_2d[-1][random.randint(0,ARRAY_SHAPE[0]-1)] = 1
+    else:
+        array_2d[-1][params['ant_fp']] = 1
+    antenna_grid=array_2d
     return antenna_grid
 
 def create_ga(FDTD, CSX, mesh, parameters):
@@ -254,12 +261,15 @@ def create_ga(FDTD, CSX, mesh, parameters):
     substrate_thickness = parameters['substrate_thickness']
     ant_h = parameters['ant_h']  # antenna height (y-direction)
     ant_l = parameters['ant_l']  # antenna length (x-direction)
-    ant_fp = parameters['ant_fp']  # feedpoint position along x
+    
     ant_e = parameters['ant_e']  # edge distance
     overlap = parameters['overlap']  # overlap distance
     gndplane_position = parameters['gndplane_position']  # depth of the ground plane in z
-    antenna_grid = parameters['antenna_grid']  # 2D grid of the antenna pattern
-
+    antenna_grid = parameters['antenna_grid'][:-1]  # 2D grid of the antenna pattern
+    #index of the one in parameters['antenna_grid'][:-1] element which is 1
+    print(f"antenna grid {parameters['antenna_grid']}")
+    ant_fp= np.where(parameters['antenna_grid'][-1] == 1)[0][0]
+    print(f"ant_fp {np.where(parameters['antenna_grid'][-1] == 1)}")
     # Create IFA material
     ifa_material = CSX.AddMetal('ifa')
 
@@ -280,7 +290,7 @@ def create_ga(FDTD, CSX, mesh, parameters):
     parameters['cell_size_y'] = cell_size_y
 
     # Define the feedpoint coordinates
-    feed_cell_x = int(ant_fp / cell_size_x)
+    feed_cell_x = ant_fp
     feed_cell_y = num_cells_y - 1  # Assuming feed is at the bottom row
     
     

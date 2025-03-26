@@ -11,7 +11,40 @@ import math as m
 logpath = 'logs/ga_log800MHZ1800mhztest6.txt'
 
 # Define the shape of the 2D binary array
-ARRAY_SHAPE = (30, 40)
+ARRAY_SHAPE = (30+1, 40)
+
+# Fixed parameters
+params = {
+    'Sim_CSX' : 'IFA.xml',
+    'unit': 1e-3,
+    'substrate_width': 25.5,
+    'substrate_length': 107,
+    'substrate_thickness': 1.5,
+    'substrate_epsR': 4.5,
+    'gndplane_position': 0,
+    'substrate_cells': 4,
+    'ant_h': 20,
+    'ant_l': 24.5,
+    'ant_fp':5,
+    'ant_e': 0.5,
+    'feed_R': 50,
+    'min_freq': 0.8e9,
+    'center_freq': 1.3e9,
+    'max_freq': 1.8e9,
+    'overlap': 0.1,
+    'fc': 0.7e9,
+    'max_timesteps': 10000,
+    'override_min_global_grid': None,
+    'plot': False,
+    'showCad': True,
+    'post_proc_only': False,
+    'delete_simulation_files': True,
+    'antenna_grid': np.ones(ARRAY_SHAPE).flatten().tolist(),
+    'randomhash': 1,
+    'frequencies': [0.83e9, 1.8e9],
+    'numThreads': 5,
+    'lambdamultiplier': 2,
+}
 
 # Number of elements in the 2D array
 NUM_ELEMENTS = ARRAY_SHAPE[0] * ARRAY_SHAPE[1]
@@ -25,16 +58,21 @@ toolbox = base.Toolbox()
 
 def init_full_individual():
     # Initialize antenna elements with all ones
-    individual = [random.randint(0, 1) for _ in range(NUM_ELEMENTS)]
-    #make it random if the corner elements are random
-    individual[0] = random.randint(0, 1)
-    individual[ARRAY_SHAPE[0] - 1] = random.randint(0, 1)
-    individual[NUM_ELEMENTS - ARRAY_SHAPE[0]] = random.randint(0, 1)
-    individual[NUM_ELEMENTS - 1] = random.randint(0, 1)
+    #make a numpy array with ARRAY_SHAPE dimensions
+    array_2d = np.ones(ARRAY_SHAPE)
+    for i in range(ARRAY_SHAPE[0]):
+        for j in range(ARRAY_SHAPE[1]):
+            array_2d[i][j] = random.random() < 0.4
+    for i in range(ARRAY_SHAPE[0]):
+        array_2d[-2][i] = random.random() < 0.1
+    array_2d[-1] = 0
+    if params['ant_fp'] == -1:
+        array_2d[-1][random.randint(0,ARRAY_SHAPE[0]-1)] = 1
+    else:
+        array_2d[-1][params['ant_fp']] = 1
+    #feedpoint = randint(0,ARRAY_SHAPE[1]-1)
 
-    for i in range(NUM_ELEMENTS):
-        if random.random() < 0.1:
-            individual[i] = 0
+    individual = array_2d.flatten().tolist()
 
     return creator.Individual(individual)
 
@@ -80,37 +118,7 @@ def evaluate(individual):
     array_2d = np.array(flat_antenna_array).reshape(ARRAY_SHAPE)
     
     # Fixed parameters
-    params = {
-        'Sim_CSX' : 'IFA.xml',
-        'unit': 1e-3,
-        'substrate_width': 25.5,
-        'substrate_length': 107,
-        'substrate_thickness': 1.5,
-        'substrate_epsR': 4.5,
-        'gndplane_position': 0,
-        'substrate_cells': 4,
-        'ant_h': 20,
-        'ant_l': 24.5,
-        'ant_fp': 5,
-        'ant_e': 0.5,
-        'feed_R': 50,
-        'min_freq': 0.8e9,
-        'center_freq': 1.3e9,
-        'max_freq': 1.8e9,
-        'overlap': 0.1,
-        'fc': 0.7e9,
-        'max_timesteps': 10000,
-        'override_min_global_grid': None,
-        'plot': False,
-        'showCad': False,
-        'post_proc_only': False,
-        'delete_simulation_files': True,
-        'antenna_grid': array_2d,
-        'randomhash': random.randint(0, 1000000),
-        'frequencies': [0.83e9, 1.8e9],
-        'numThreads': 5,
-        'lambdamultiplier': 2,
-    }
+    params['antenna_grid']= array_2d
     
     try:
         # Call the simulation function with the modified 2D array
@@ -209,36 +217,10 @@ if __name__ == "__main__":
     array_2d = optimize_antenna()
     # Run a final simulation with the best 2D array
         # Fixed parameters
-    params = {
-        'Sim_CSX' : 'IFA.xml',
-        'unit': 1e-3,
-        'substrate_width': 25.5,
-        'substrate_length': 107,
-        'substrate_thickness': 1.5,
-        'substrate_epsR': 4.5,
-        'gndplane_position': 0,
-        'substrate_cells': 4,
-        'ant_h': 24.5,
-        'ant_l': 24.5,
-        'ant_fp': 5,
-        'ant_e': 0.5,
-        'feed_R': 50,
-        'min_freq': 0.8e9,
-        'center_freq': 1.3e9,
-        'max_freq': 1.8e9,
-        'overlap': 0.1,
-        'fc': 0.7e9,
-        'max_timesteps': 20000,
-        'override_min_global_grid': None,
-        'plot': True,
-        'showCad': False,
-        'post_proc_only': False,
-        'delete_simulation_files': True,
-        'antenna_grid': array_2d,
-        'randomhash': random.randint(0, 1000000),
-        'frequencies': [0.83e9, 1.8e9],
-        #'numThreads': 4,
-        'lambdamultiplier': 2,
-    }
+    params['max_timesteps']= 30000
+    params['override_min_global_grid']: None
+    params['plot']= True
+    params['showCad']= False
+
     freq, s11_dB, Zin, P_in, hash_prefix = ga_simulation(params)
     # Now you can plot or analyze the results as needed
