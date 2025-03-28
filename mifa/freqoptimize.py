@@ -207,7 +207,7 @@ def evaluation_fun(x, variable_names, fixed_params,logname):
         logger.info(log_message)
 
         # Return the objective function value (since we want to minimize it)
-        return reflection_percent(s11_value)*(efficiency/100)
+        return -reflection_percent(s11_value)*(efficiency/100)
 
     except Exception as e:
         logger.error(f"Exception in evaluation_fun: {e}")
